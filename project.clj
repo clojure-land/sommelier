@@ -1,0 +1,18 @@
+(defproject apriori "0.1.0-SNAPSHOT"
+  :dependencies [[org.clojure/clojure "1.8.0"]
+                 [org.clojure/tools.logging "0.4.0"]
+                 [org.clojure/java.jdbc "0.7.3"]
+                 [org.clojure/data.json "0.2.6"]
+                 [org.postgresql/postgresql "9.4-1201-jdbc41"]
+                 [org.clojure/math.combinatorics "0.1.4"]
+                 [compojure "1.6.0"]
+                 [cheshire "5.8.0"]
+                 [ring/ring-json "0.4.0"]
+                 [metosin/ring-swagger "0.24.3"]
+                 [pg-hstore "3.0.3"]
+                 [environ "1.1.0"]
+                 [org.xerial/sqlite-jdbc "3.7.2"]
+                 [c3p0/c3p0 "0.9.1.2"]
+                 [com.h2database/h2 "1.3.168"]]
+  :plugins [[lein-ring "0.12.1"]]
+  :ring {:handler apriori.api.handler/api})

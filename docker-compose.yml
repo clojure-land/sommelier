@@ -1,0 +1,23 @@
+octane_s2s_api:
+  image: octane/s2s-api:latest
+  command: run
+  links:
+    - postgres
+  ports:
+    - 3000:3000
+  environment:
+    DB_HOST: postgres
+    DB_PORT: 5432
+    DB_NAME: octane
+    DB_USER: octane
+    DB_PASSWORD: "123"
+
+postgres:
+  image: postgres:9.4
+  restart: always
+  ports:
+    - 5432:5432
+  environment:
+    POSTGRES_USER: octane
+    POSTGRES_PASSWORD: "123"
+    POSTGRES_DB: octane
