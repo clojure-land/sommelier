@@ -10,13 +10,54 @@
             [environ.core :refer [env]]))
 
 (defn add-data [body]
-  (let [data (as-> {} d
-                   (assoc d :a (if (empty? (get body "a")) "" (get body "a")))
-                   (assoc d :b (if (empty? (get body "b")) "" (get body "b")))
-                   (assoc d :c (if (empty? (get body "c")) "" (get body "c")))
-                   (assoc d :d (if (empty? (get body "d")) "" (get body "d"))))
-        insert (insert! db :data_set {:data (generate-string body) :created (quot (System/currentTimeMillis) 1000)})]
-    (status (response {:meta {:status "ok"}}) 200)))
+
+  (for [row
+            ;[["beer"]
+            ; ["beer" "cheese"]
+            ; ["banana" "beer" "cheese" "nuts"]
+            ; ["beer" "nuts"]
+            ; ["beer" "cheese" "nuts"]
+            ; ["banana" "cheese" "nuts"]
+            ; ["beer" "cheese"]
+            ; ["banana" "beer" "cheese" "nuts"]
+            ; ["beer" "cheese" "nuts"]
+            ; ["banana" "beer" "cheese" "nuts"]]]
+            [["bread" "milk"]
+             ["bread" "diaper" "beer" "eggs"]
+             ["milk" "diaper" "beer" "coke"]
+             ["bread" "milk" "diaper" "beer"]
+             ["bread" "milk" "diaper" "coke"]]]
+
+    ;["bread" "diaper" "beer" -> "eggs"]
+    ;["eggs" -> "bread" "diaper" "beer"]
+
+
+
+    ;; Note that partitions intelligently handles duplicate items
+    ;=> (combo/partitions [1 1 2])
+    ;(([1 1 2])
+    ;  ([1 1] [2])
+    ;  ([1 2] [1])
+    ;  ([1] [1] [2]))
+    ;
+    ;; You can also specify a min and max number of partitions
+    ;(combo/partitions [1 1 2 2] :min 2 :max 3)
+    ;(([1 1 2] [2])
+    ;  ([1 1] [2 2])
+    ;  ([1 1] [2] [2])
+    ;  ([1 2 2] [1])
+    ;  ([1 2] [1 2])
+    ;  ([1 2] [1] [2])
+    ;  ([1] [1] [2 2]))
+
+    (insert! db :data_set {:data (generate-string row) :created (quot (System/currentTimeMillis) 1000)})))
+
+
+  ;(let [data {}
+  ;      insert (insert! db :data_set {:data (generate-string body) :created (quot (System/currentTimeMillis) 1000)})]
+
+
+    ;(status (response {:meta {:status "ok"}}) 200)))
 
 
 
@@ -89,67 +130,3 @@
   ;
   ;
   ;    ))
-
-
-
-  ; "product_name" {"a"}                                  1
-  ; "product_name" {"a", "b"}                             1
-  ; "product_name" {"a", "b", "c"}                        2
-  ; "product_name" {"a"} "product_color" {"b"}            1
-  ; "product_name" {"a", "b"} "product_color" {"b", "b"}  4
-  ; "product_name" {"a"} , "product_color" {"b"} -> "product_name" {"c"} (60%)
-
-  ;([
-  ;  ({
-  ;    "product_name" ["a" "b" "c" "d"],
-  ;    "product_color" ["b" "b" "b" "r"],
-  ;    "product_size" ["s" "s" "s" "s"]}) 2]
-  ;  [
-  ;   ({"product_name" ["a" "b" "c" "d"],
-  ;     "product_color" ["b" "g" "g" "r"],
-  ;     "product_size" ["s" "xs" "l" "s"]}) 1]
-  ;  [
-  ;   ({"product_name" ["a" "b" "c" "d"],
-  ;     "product_color" ["b" "g" "r" "r"],
-  ;     "product_size" ["s" "xs" "l" "s"]}) 1]
-  ;  [
-  ;   ({"product_name" ["a" "b" "c" "d"],
-  ;     "product_color" ["b" "b" "b" "r"],
-  ;     "product_size" ["s" "xs" "l" "s"]}) 1])
-
-
-
-  ;(let [result (query db ["select * from data_set"])
-  ;      sets (as-> {} i
-  ;                 (for [row result]
-  ;                   (for [item (parse-string (:data row) true)]
-  ;                     (prn item)
-  ;                     )))]))
-
-  ; BUILD
-  ;{
-  ;  "id": "40dd3e7f-e187-4117-a3dd-54d8e868aec7",
-  ;  "name": "test111",
-  ;  "support": 0,
-  ;  "confidence": 0,
-  ;  "schema" : {"product_price", "product_color", "product_size"}
-  ;  "modified": 1511193918
-  ;}
-
-  ; GET
-  ; product_price | product_color | product_size
-  ; 2, 3, 2       | b, g, r       | xs, s, xs
-
-  ; POST
-  ; {
-  ;   "product_price" => [2,3,2],
-  ;   "product_color" => ["b","g","r"]
-  ;   "product_size"  => ["xs","s","xs"]
-  ; }
-
-  ; {"product_price":3} => {"product_color":"g"}, {"product_size":"s"} (100%)
-  ; [
-  ;   {"product_price":3}
-  ;   {"product_price":2}
-  ;   {"product_price":2}
-  ; ]

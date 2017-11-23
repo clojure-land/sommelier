@@ -31,7 +31,7 @@
 ; get db latency
 (defn get-db-latency []
   (let [now (clj-time.coerce/to-long (time/now))]
-    (let [result (query db ["select COUNT(*) AS count from project.clj LIMIT 1"])]
+    (let [result (query db ["select COUNT(*) AS count from project LIMIT 1"])]
       (float (/ (- (clj-time.coerce/to-long (time/now)) now) 1000)))))
 
 ; get health

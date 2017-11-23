@@ -44,6 +44,9 @@
                                       [[:id "integer" "PRIMARY KEY", "AUTOINCREMENT"]
                                        [:item "text"]
                                        [:frequency "integer"]
+                                       [:support "integer"]
+                                       [:confidence "integer"]
+                                       [:lift "integer"]
                                        [:created "timestamp"]]))
     (catch Exception e
       (log/warn (.getMessage e)))))
