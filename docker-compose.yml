@@ -1,5 +1,5 @@
-octane_s2s_api:
-  image: octane/s2s-api:latest
+apriori:
+  image: apriori:latest
   command: run
   links:
     - postgres
@@ -8,9 +8,9 @@ octane_s2s_api:
   environment:
     DB_HOST: postgres
     DB_PORT: 5432
-    DB_NAME: octane
-    DB_USER: octane
-    DB_PASSWORD: "123"
+    DB_NAME: apriori
+    DB_USER: apriori
+    DB_PASSWORD: 123
 
 postgres:
   image: postgres:9.4
@@ -18,6 +18,6 @@ postgres:
   ports:
     - 5432:5432
   environment:
-    POSTGRES_USER: octane
-    POSTGRES_PASSWORD: "123"
-    POSTGRES_DB: octane
+    POSTGRES_USER: apriori
+    POSTGRES_PASSWORD: 123
+    POSTGRES_DB: apriori

@@ -10,123 +10,78 @@
             [environ.core :refer [env]]))
 
 (defn add-data [body]
+  ;(prn (for [row body]
+  ;       ;(prn (type row)))) ;clojure.lang.PersistentVector
+  ;       (->>
+  ;         (filter vector row)
+  ;         (map (fn [d] {:data (generate-string d) :created (quot (System/currentTimeMillis) 1000)}))))))
 
-  (for [row
-            ;[["beer"]
-            ; ["beer" "cheese"]
-            ; ["banana" "beer" "cheese" "nuts"]
-            ; ["beer" "nuts"]
-            ; ["beer" "cheese" "nuts"]
-            ; ["banana" "cheese" "nuts"]
-            ; ["beer" "cheese"]
-            ; ["banana" "beer" "cheese" "nuts"]
-            ; ["beer" "cheese" "nuts"]
-            ; ["banana" "beer" "cheese" "nuts"]]]
-            [["bread" "milk"]
-             ["bread" "diaper" "beer" "eggs"]
-             ["milk" "diaper" "beer" "coke"]
-             ["bread" "milk" "diaper" "beer"]
-             ["bread" "milk" "diaper" "coke"]]]
+  ;{:data (generate-string row) :created (quot (System/currentTimeMillis) 1000)} )))
 
-    ;["bread" "diaper" "beer" -> "eggs"]
-    ;["eggs" -> "bread" "diaper" "beer"]
+  ;(insert-multi! db :data_set
+  ;               (for [row body] {:data (generate-string row) :created (quot (System/currentTimeMillis) 1000)})))
 
 
 
-    ;; Note that partitions intelligently handles duplicate items
-    ;=> (combo/partitions [1 1 2])
-    ;(([1 1 2])
-    ;  ([1 1] [2])
-    ;  ([1 2] [1])
-    ;  ([1] [1] [2]))
-    ;
-    ;; You can also specify a min and max number of partitions
-    ;(combo/partitions [1 1 2 2] :min 2 :max 3)
-    ;(([1 1 2] [2])
-    ;  ([1 1] [2 2])
-    ;  ([1 1] [2] [2])
-    ;  ([1 2 2] [1])
-    ;  ([1 2] [1 2])
-    ;  ([1 2] [1] [2])
-    ;  ([1] [1] [2 2]))
+  ;["a" "b"]["c" "d"]["d" "e" "f"]["a" "f"]
 
+  (for [row [;["b" "m"]
+             ["b" "d" "bb" "e"]]]
+             ;["m" "d" "bb" "c"]
+             ;["b" "m" "d" "bb"]
+             ;["b" "m" "d" "c"]]]
     (insert! db :data_set {:data (generate-string row) :created (quot (System/currentTimeMillis) 1000)})))
 
 
-  ;(let [data {}
-  ;      insert (insert! db :data_set {:data (generate-string body) :created (quot (System/currentTimeMillis) 1000)})]
+
+;  (for [row
+;[["beer"]
+; ["beer" "cheese"]
+; ["banana" "beer" "cheese" "nuts"]
+; ["beer" "nuts"]
+; ["beer" "cheese" "nuts"]
+; ["banana" "cheese" "nuts"]
+; ["beer" "cheese"]
+; ["banana" "beer" "cheese" "nuts"]
+; ["beer" "cheese" "nuts"]
+; ["banana" "beer" "cheese" "nuts"]]]
+;[["bread" "milk"]
+; ["bread" "diaper" "beer" "eggs"]
+; ["milk" "diaper" "beer" "coke"]
+; ["bread" "milk" "diaper" "beer"]
+; ["bread" "milk" "diaper" "coke"]]]
 
 
-    ;(status (response {:meta {:status "ok"}}) 200)))
 
 
+;(let [insert (insert! db :data_set {:data (generate-string row) :created (quot (System/currentTimeMillis) 1000)})
+;
+;      insert-multi! db :data_set
+;      [:name :cost]
+;      [["Mango" 722]
+;       ["Feijoa" 441]]
+;
+;      ]
+;  (status (response {:meta {:status "ok"}}) 200))))
 
-  ;(reduce + [1 2 3 4 5])
-  ;(reduce - [1 2 3 4 5])
-  ;(reduce (fn [a b] (+ a b)) [1 2 3 4 5])
-  ;(reduce (fn [a b] ({a: (+ a) b: (+ b) c: (+ c) }) [{a:1 b:2 c:3},{a:4 b:5 c:6},{a:7 b:8 c:9}])
-  ;(reduce (fn [a b] {:a (+ (:a a) (:a b)) :b (+ (:b a) (:b b)) :c (+ (:c a) (:c b))}) [{:a 1 :b 2 :c 3},{:a 4 :b 5 :c 6},{:a 7 :b 8 :c 9}])
-  ;(->> [{:a 1 :b 2 :c 3}, {:a 4 :b 5 :c 6}, {:a 7 :b 8 :c 9}]
-  ;     (reduce (fn [a b] {:a (+ (:a a) (:a b)) :b (+ (:b a) (:b b)) :c (+ (:c a) (:c b))})))
-  ;(->> [{:a 1 :b 2 :c 3}, {:a 4 :b 5 :c 6}, {:a 7 :b 8 :c 9}]
-  ;     #(filter even? (:a %))
-  ;     (reduce (fn [a b] {:a (+ (:a a))})))
-  ;(reduce (fn [a b] (conj (frequencies a) (frequencies b))n))
-  ;(prn (combo/subsets [{:product_id "a" "b" "c"}]))
-  ;frequencies (sort-by last >
-  ;                     (->> (for [row result] (
-  ;                                              (prn (parse-string (:data row)))
-  ;                                              ;(parse-string (:data row))
-  ;                                              ))
-  ;                          ;(frequencies)
-  ;
-  ;                          ))
-  ;]
-  ;(query db ["select data from data_set"])
-
-  ;{
-  ; :item-set-1 ["a", "b", "c"]
-  ; :item-set-2 ["d", "e", "f"]
-  ; }
-  ;
-  ;{
-  ; [:item-set-1 ["a"]]
-  ; [:item-set-1 ["a" "b"]]
-  ; [:item-set-1 ["a" "b" "c"]]
-  ; [:item-set-2 ["d"]]
-  ; [:item-set-2 ["d" "e"]]
-  ; [:item-set-2 ["d" "e" "f"]]
-  ;
-  ; [:item-set-1 ["a"] [:item-set-2 ["d"]]]
-  ; [:item-set-1 ["b"] [:item-set-2 ["e"]]]
-  ; [:item-set-1 ["c"] [:item-set-2 ["f"]]]
-  ;
-  ; [:item-set-1 ["a" "b"] [:item-set-2 ["d" "e"]]]
-  ; [:item-set-1 ["a" "b"] [:item-set-2 ["e" "f"]]]
-  ; [:item-set-1 ["b" "c"] [:item-set-2 ["d" "e"]]]
-  ; [:item-set-1 ["b" "c"] [:item-set-2 ["e" "f"]]]
-  ;
-  ; [:item-set-1 ["a" "b" "c"] [:item-set-2 ["d" "e" "f"]]]
-  ; }
-
-
-  ;(let [result (query db ["select data from data_set"])
-  ;      items (as-> () i
-  ;                  (for [row result]
-  ;                    ;(for [item (parse-string (:data row))]
-  ;                    ;  (prn item)
-  ;
-  ;                      )))]))
-
-
-  ;(for [row result]
-  ;  (for [item (parse-string (:data row))]
-  ;
-  ;    (prn (->> #{1 2 3}
-  ;         (combinatorics/subsets)
-  ;         (remove empty?)
-  ;         (map set)
-  ;         (set)))
-  ;
-  ;
-  ;    ))
+;(reduce + [1 2 3 4 5])
+;(reduce - [1 2 3 4 5])
+;(reduce (fn [a b] (+ a b)) [1 2 3 4 5])
+;(reduce (fn [a b] ({a: (+ a) b: (+ b) c: (+ c) }) [{a:1 b:2 c:3},{a:4 b:5 c:6},{a:7 b:8 c:9}])
+;(reduce (fn [a b] {:a (+ (:a a) (:a b)) :b (+ (:b a) (:b b)) :c (+ (:c a) (:c b))}) [{:a 1 :b 2 :c 3},{:a 4 :b 5 :c 6},{:a 7 :b 8 :c 9}])
+;(->> [{:a 1 :b 2 :c 3}, {:a 4 :b 5 :c 6}, {:a 7 :b 8 :c 9}]
+;     (reduce (fn [a b] {:a (+ (:a a) (:a b)) :b (+ (:b a) (:b b)) :c (+ (:c a) (:c b))})))
+;(->> [{:a 1 :b 2 :c 3}, {:a 4 :b 5 :c 6}, {:a 7 :b 8 :c 9}]
+;     #(filter even? (:a %))
+;     (reduce (fn [a b] {:a (+ (:a a))})))
+;(reduce (fn [a b] (conj (frequencies a) (frequencies b))n))
+;(prn (combo/subsets [{:product_id "a" "b" "c"}]))
+;frequencies (sort-by last >
+;                     (->> (for [row result] (
+;                                              (prn (parse-string (:data row)))
+;                                              ;(parse-string (:data row))
+;                                              ))
+;                          ;(frequencies)
+;
+;                          ))
+;]

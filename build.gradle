@@ -2,18 +2,7 @@ buildscript {
     repositories {
         mavenCentral()
     }
-
-    dependencies {
-        classpath 'com.h2database:h2:1.4.191'
-        classpath 'postgresql:postgresql:9.1-901-1.jdbc4'
-    }
 }
-
-plugins {
-    id "org.flywaydb.flyway" version "4.0.3"
-}
-
-import groovy.json.JsonSlurper
 
 /**
  * Get Date
@@ -26,62 +15,16 @@ def getDate() {
 }
 
 /**
- * Pulls down the awscli image, and uses that for lots of
- * goodies.
- */
-task awscli {
-    doLast {
-        exec {
-            commandLine "docker", "pull", "evilwire/awscli"
-        }
-        exec {
-            commandLine "docker", "tag", "evilwire/awscli", "awscli"
-        }
-    }
-}
-
-
-/**
- * Logs into the AWS ECR registry so that Docker can publish
- * to the correct ECR repository.
- */
-task doLogin {
-    dependsOn = ["awscli"]
-    doLast {
-        def ecrLogin = new ByteArrayOutputStream()
-        exec {
-            standardOutput = ecrLogin
-            if (deployMode == "local") {
-                commandLine "docker", "run",
-                        "--env-file=${System.getProperty("user.home")}/.aws/${accountId}.env",
-                        "awscli", "ecr", "get-login",
-                        "--no-include-email",
-                        "--region", "us-east-1"
-            } else {
-                commandLine "docker", "run",
-                        "awscli", "ecr", "get-login",
-                        "--no-include-email", "--region", "us-east-1"
-            }
-        }
-        def loginCmd = ecrLogin.toString().reverse().drop(1).reverse().split()
-        exec {
-            commandLine loginCmd
-        }
-    }
-}
-
-/**
  * Build docker image
  */
 task build {
-
     doLast {
         def deployStream = new ByteArrayOutputStream()
         def date = getDate()
 
         exec {
             workingDir '.'
-            commandLine 'lein', 'ring', 'uberjar'
+            commandLine 'lein', 'uberjar'
         }
 
         exec {
@@ -96,23 +39,7 @@ task build {
                     '--build-arg', "VERSION=${version}",
                     '--build-arg', "BUILD_TIME=${date}",
                     '--build-arg', "GHASH=${deployStream.toString().trim()}",
-                    '-t', "octane/s2s-api:${version}", "."
-        }
-    }
-}
-
-/**
- * Publishes to Docker ECR with the Docker image that was just built.
- */
-task publish {
-    dependsOn = ["build","doLogin"]
-    def ecrContainerName = "${accountId}.dkr.ecr.us-east-1.amazonaws.com/octane-s2s-api:${version}"
-    doLast {
-        exec {
-            commandLine "docker", "tag", "octane/s2s-api:${version}", ecrContainerName
-        }
-        exec {
-            commandLine "docker", "push", ecrContainerName
+                    '-t', "apriori:${version}", "."
         }
     }
 }
@@ -121,7 +48,6 @@ task publish {
  * Run
  */
 task run {
-    dependsOn = ["build"]
     doLast{
         exec {
             workingDir '.'
@@ -141,121 +67,3 @@ task stop {
         }
     }
 }
-
-/**
- * Deploys against the target environment.
- */
-def heathId
-task deploy {
-    def appName="${env}-${subenv}-octane-s2s-api"
-    def deploymentId="${appName}-${version}"
-    def sipper = new JsonSlurper()
-    def heathStream = new ByteArrayOutputStream()
-    def awsOut = new ByteArrayOutputStream()
-
-    doLast {
-        exec {
-            standardOutput = heathStream;
-            commandLine 'docker', 'run', 'octane/heath',
-                    '--pre-deploy', '--who', 'Octane-Jenkins',
-                    '--service-name', appName,
-                    '--version', deploymentId,
-                    '--target', "aws/ecs/${appName}",
-                    '--extra', "fix-version=${version}",
-                    '--extra', "short-version=${version}"
-        }
-        heathId = sipper.parseText(heathStream.toString()).id
-
-        exec {
-            workingDir '.'
-
-            if (deployMode == "local") {
-                commandLine "docker", "run",
-                        "-e", "APP_NAME=octane-s2s-api",
-                        "-e", "VERSION=${version}",
-                        "-e", "REMOTE_STATE_BUCKET=octane-platform-tfstates",
-                        "--env-file", "${System.getProperty("user.home")}/.aws/${accountId}.env",
-                        "-v", "${System.getProperty("user.dir")}/infrastructure:/terraform/infrastructure",
-                        "octane/terraform:${tfVersion}", "deploy", env, subenv
-            } else {
-                commandLine "docker", "run",
-                        "-e", "AWS_ACCOUNT_ID=669858054894",
-                        "-e", "AWS_REGION=us-east-1",
-                        "-e", "APP_NAME=octane-s2s-api",
-                        "-e", "VERSION=${version}",
-                        "-e", "REMOTE_STATE_BUCKET=octane-platform-tfstates",
-                        "-v", "${System.getProperty("user.dir")}/infrastructure:/terraform/infrastructure",
-                        "octane/terraform:${tfVersion}", "deploy", env, subenv
-            }
-        }
-    }
-}
-
-gradle.taskGraph.afterTask { Task task, TaskState state ->
-    if(task.name == 'deploy') {
-        if(state.failure) {
-            exec {
-                commandLine 'docker', 'run', 'octane/heath',
-                        '--post-deploy',
-                        '--deployment-id', heathId,
-                        '--status', "no cigar"
-            }
-        } else {
-            exec{
-                commandLine 'docker', 'run', 'octane/heath',
-                        '--post-deploy',
-                        '--deployment-id', heathId,
-                        '--status', "success"
-            }
-        }
-    }
-}
-
-task destroy {
-    doLast {
-        exec {
-            workingDir '.'
-
-            if (deployMode == "local") {
-                commandLine "docker", "run",
-                        "-e", "APP_NAME=octane-s2s-api",
-                        "-e", "VERSION=${version}",
-                        "-e", "REMOTE_STATE_BUCKET=octane-platform-tfstates",
-                        "--env-file", "${System.getProperty("user.home")}/.aws/${accountId}.env",
-                        "-v", "${System.getProperty("user.dir")}/infrastructure:/terraform/infrastructure",
-                        "octane/terraform:${tfVersion}", "destroy", env, subenv
-            } else {
-                commandLine "docker", "run",
-                        "-u", "${uid}",
-                        "-e", "AWS_ACCOUNT_ID=669858054894",
-                        "-e", "AWS_REGION=us-east-1",
-                        "-e", "APP_NAME=octane-s2s-api",
-                        "-e", "VERSION=${version}",
-                        "-e", "REMOTE_STATE_BUCKET=octane-platform-tfstates",
-                        "-v", "${System.getProperty("user.dir")}/infrastructure:/terraform/infrastructure",
-                        "octane/terraform:${tfVersion}", "destroy", env, subenv
-            }
-        }
-    }
-}
-
-flyway {
-    url = 'jdbc:postgresql://localhost:5432/octane'
-    schemas = ['octane_s2s_api']
-    table = "schema_history"
-    user = 'octane'
-    password = '123'
-    driver = "org.postgresql.Driver"
-    locations = ['filesystem:resources/sql']
-}
-
-task migrate {
-    doLast {
-        exec {
-            workingDir '.'
-            commandLine ''
-        }
-    }
-}
-
-task test {}

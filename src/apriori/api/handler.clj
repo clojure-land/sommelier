@@ -15,16 +15,12 @@
 (defroutes api-routes
            (GET "/health" [] (get-health))
            (GET "/associations/project/:id" [id] ())
-
            (context "/data/project/:id" [id] (POST "/" {body :body} (add-data body)))
 
            (context "/project" [] (PUT "/" {body :body} (add-edit-project nil body))
                                   (context "/:id" [id] (GET "/" [id] (get-project id))
                                                        (POST "/" {body :body} (add-edit-project id body))
                                                        (DELETE "/" [id] (delete-project id))))
-
-
-           (GET "/item-set" [] (generate))
 
            (route/not-found (status (response {:meta {:status "not found"} :data {:errors ["The requested endpoint does not exist."]}}) 404)))
 

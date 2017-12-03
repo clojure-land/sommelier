@@ -1,14 +1,39 @@
-# apriori
+# Apriori
 
-A Clojure library designed to ... well, that part is up to you.
 
-## Usage
+## Requrirments 
+* [Docker](https://www.docker.com/)
+* [Gradle](https://gradle.org/) 
+* [Leiningen](https://leiningen.org/)
 
-FIXME
+## Installation
 
-## License
+```bash
+// start
+gradle build run
 
-Copyright © 2017 FIXME
+// stop
+gradle stop
+```
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+# Usage
+
+## Api
+
+## Cli
+```bash
+
+apriori api --start --port=PORT
+
+apriori api --stop
+
+apriori data-set --upload=PATH --product=ID
+
+apriori data-set --empty --product=ID
+
+apriori project --create --name=NAME
+
+apriori project --update=ID --name=NAME
+
+apriori project --delete=ID
+``` 

@@ -10,12 +10,14 @@ ENV VERSION $VERSION
 ENV BUILD_TIME $BUILD_TIME
 ENV GHASH $GHASH
 
-COPY target /opt/s2s-api/bin
-COPY entrypoint.sh /opt/s2s-api/bin/entrypoint.sh
+COPY target /opt/apriori/bin
+COPY entrypoint.sh /opt/apriori/bin/entrypoint.sh
+COPY apriori.sh /usr/bin/apriori
 
-RUN chmod 500 /opt/s2s-api/bin/entrypoint.sh
+RUN chmod 500 /opt/apriori/bin/entrypoint.sh
+RUN chmod +x /usr/bin/apriori
 
-WORKDIR /opt/s2s-api/bin
+WORKDIR /opt/apriori/bin
 
 EXPOSE 3000
 

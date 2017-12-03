@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 start(){
-    echo "--> INFO: starting..."
-    java -jar octane-s2s-api-1.0-standalone.jar
+    echo "--> INFO: starting api..."
+    java -jar apriori-0.1.0-standalone.jar api --start --port=3000
 }
 
 case $1 in
