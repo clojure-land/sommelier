@@ -3,6 +3,7 @@ apriori:
   command: run
   links:
     - postgres
+#    - redis
   ports:
     - 3000:3000
   environment:
@@ -10,7 +11,8 @@ apriori:
     DB_PORT: 5432
     DB_NAME: apriori
     DB_USER: apriori
-    DB_PASSWORD: 123
+    DB_PASSWORD: "123"
+    SCHEMA_VALIDATION: "true"
 
 postgres:
   image: postgres:9.4
@@ -21,3 +23,9 @@ postgres:
     POSTGRES_USER: apriori
     POSTGRES_PASSWORD: 123
     POSTGRES_DB: apriori
+
+#redis:
+#  image: redis:alpine
+#  ports:
+#    - 6379:6379
+#  #environment:

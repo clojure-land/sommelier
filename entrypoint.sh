@@ -2,7 +2,7 @@
 
 start(){
     echo "--> INFO: starting api..."
-    java -jar apriori-0.1.0-standalone.jar api --start --port=3000
+    java -jar apriori-0.1.0-standalone.jar launch-api
 }
 
 case $1 in

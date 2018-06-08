@@ -1,79 +1,124 @@
 (ns apriori.cli.core
-  (:require [clojure.string :as string]
-            [clj-sub-command.core :refer [sub-command candidate-message]]
-            [clojure.tools.cli :as cli]
-            [apriori.api.handler :as app]
-            [apriori.utlis.apriori :as apriori]
-            [apriori.utlis.data-set :as data-set]
-            [ring.adapter.jetty :as jetty])
+  (:require
+    [pandect.algo.sha256 :refer :all]
+    [apriori.api.handler :as api]
+    [environ.core :refer [env]]
+    [clojure.tools.cli :refer [parse-opts]]
+    [clojure.string :as string]
+    [cheshire.core :as json]
+    [apriori.util.apriori :as apriori]
+    [apriori.util.repository.user :as user]
+    [ring.adapter.jetty :as jetty]
+    [schema.core :as schema]
+    [apriori.util.logger :as logger])
   (:gen-class))
 
-; exit
-(defn exit [status msg]
+(defn usage [options-summary]
+  (string/join \newline ["Usage: apriori action [options]" "" "Options:" options-summary "" "Actions:" "  launch-api         Launch an instance of the api." ""]))
+
+(defn error-msg
+  "Output error message."
+  [errors]
+
+  (str (string/join \newline errors) \newline))
+
+(defn exit
+  "Output message with a system status."
+  [status msg]
+
   (println msg)
   (System/exit status))
 
-; run
-(defn run [args]
-  (let [{:keys [options arguments errors summary]}
-        (cli/parse-opts args [["-p" "--project ID" "A project identifier." :parse-fn #(Integer/parseInt %)]
-                              ["-h" "--help" "Show help."]])]
-    (case options
-      :project (->>
-                 (get options :project)
-                 (apriori/run))
-      :help (println summary))))
+(def cli-options
+  "Command line interface options."
 
-; data-set
-(defn data-set [args]
-  (let [{:keys [options arguments errors summary]}
-        (cli/parse-opts args [["-u" "--upload FILE" "Upload a json file."]
-                              ["-h" "--help" "Show help."]])]
+  [["-p" "--port PORT" "Port number"
+    :default 3000
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
+   [nil "--email EMAIL" "Email address"]
+   [nil "--password PASSWORD" "Password"]
+   ["-h" "--help"]])
+
+(defn validate-args
+  "Validate arguments."
+  [args]
+
+  (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
     (cond
-      (:upload options) (->>
-                          ""
-                          (data-set/upload))
-      (:help options) (println summary))))
+      (:help options)
+      {:exit-message (usage summary) :ok? true}
 
-; api
-(defn api [args]
-  (let [{:keys [options arguments errors summary]}
-        (cli/parse-opts args [["-h" "--help" "Show help."]
-                              ["-p" "--port PORT" "A port number." :parse-fn #(Integer/parseInt %)]
-                              [nil "--start" "Launch an instance of the api."]
-                              [nil "--stop" "Terminate an api instance."]])
-        port (if (contains? options :port) (get options :port) 3000)]
+      errors {:exit-message (error-msg errors)}
 
-    (cond
-      (:start options) (jetty/run-jetty app/api {:port port})
-      (:help options) (println summary)
+      (and (= 1 (count arguments))
+           (#{"launch-api"
+              "create-user"
+              "apriori"} (first arguments))) {:action (first arguments) :options options}
+
       :else
-      (exit 1 (str "Options not found, try running: api --help\n")))))
+      {:exit-message (error-msg ["Command not found, try running: --help"])})))
 
-; main
-(defn -main [& args]
-  (let [[opts cmd args help cands]
-        (sub-command args
-                     :options [["-h" "--help" "Show help." :default false :flag true]]
-                     :commands [["api" "Start or stop an instance of the api."]
-                                ["data-set" "Manage data-sets."]
-                                ["project" "Manage projects."]
-                                ["run" "Run the apriori.sh algorithm."]])]
+(defn random-transaction [x]
+  (let [transaction (take
+                      (rand-int x)
+                      ((partial shuffle ["apple" "banana" "pear" "mango" "raspberries", "kiwi", "orange", "tomato", "pineapple", "melon", "water melon"])))]
 
-    (when (:help opts)
-      (exit 0 help))
+    (if (empty? transaction)
+      (random-transaction x)
+      transaction)))
 
-    (case cmd
-      :api (api args)
-      :run (run args)
-      :data-set (data-set args)
-      (exit 1 (str "Command not found, try running: --help\n" (candidate-message cands))))))
+(defn test-data []
+  (reduce (fn [x number]
+            (conj x (vec
+                      (if (= (rand-int 4) 1)
+                        (random-transaction 10)
+                        (try
+                          (rand-nth x)
+                          (catch Exception e (random-transaction 10)))))))
+          []
+          (take 1000 (iterate inc 1))))
 
-; apriori.sh run --project-id={id}
-; apriori.sh data-set --upload={path} --remove-all --remove-before={date-time} -remove-after={date-time}
-; apriori.sh api --start --stop
-; apriori.sh schedule --schedule={cron-date-time}
-; apriori.sh project --create --update==1 --delete==1 --name=test --min-support=0.5 --min-confidence=0.4
-; apriori.sh --help
-; run-jetty (run-jetty #'engine {:port 8080})
+(defn -main
+  "Run the command line interface."
+  [& args]
+
+  (let [{:keys [action options exit-message ok?]} (validate-args args)]
+    (if exit-message
+      (exit (if ok? 0 1) exit-message)
+
+      (case action
+        "launch-api" (jetty/run-jetty api/app {:port (get options :port)})
+
+        "create-user" (try
+                        (user/save
+                          (user/map->UserRecord {:id                  (java.util.UUID/randomUUID)
+                                                 :email               (get options :email)
+                                                 :plain-text-password (get options :password)
+                                                 :password            ""
+                                                 :salt                ""}))
+                        (catch Exception e
+                          (prn e)
+                          (prn (logger/humanize-schema-exception e))))
+
+        "apriori" (apriori/run
+                    (test-data)
+                    ;[["beer"]
+                    ; ["beer" "cheese"]
+                    ; ["banana" "beer" "cheese" "nuts"]
+                    ; ["beer" "nuts"]
+                    ; ["beer" "cheese" "nuts"]
+                    ; ["banana" "cheese" "nuts"]
+                    ; ["beer" "cheese"]
+                    ; ["banana" "beer" "cheese" "nuts"]
+                    ; ["beer" "cheese" "nuts"]
+                    ; ["banana" "beer" "cheese" "nuts"]]
+
+                    ;[["bread" "milk"]
+                    ; ["bread" "diaper" "beer" "eggs"]
+                    ; ["milk" "diaper" "beer" "coke"]
+                    ; ["bread" "milk" "diaper" "beer"]
+                    ; ["bread" "milk" "diaper" "coke"]]]
+                    )
+        "default" nil))))

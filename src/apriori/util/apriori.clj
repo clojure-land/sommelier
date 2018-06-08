@@ -1,8 +1,6 @@
-(ns apriori.utlis.apriori
+(ns apriori.util.apriori
   (:require [ring.util.response :refer :all]
             [clojure.java.jdbc :refer :all]
-            [apriori.utlis.storage :refer :all]
-            [apriori.utlis.data-set :refer :all]
             [cheshire.core :refer :all]
             [clojure.math.combinatorics :as combo]
             [clj-time.core :as time]
@@ -10,20 +8,14 @@
             [clj-time.format :as format]))
 
 ; generate association rules
-(defn run [project-id]
+(defn run [data-set]
   (let [time (clj-time.coerce/to-long (time/now))
-
-        project project-id
-
-        ; a collection of related items.
-        data-set (get-data-set "data_set")
 
         ; collection of one or more items.
         item-set (->>
                    (for [row data-set]
                      (->>
-                       (parse-string (:data row))
-                       (combo/subsets)
+                       (combo/subsets row)
                        (map (fn [n] (combo/partitions n :max 2)))))
                    (apply concat)
                    (apply concat))
@@ -37,7 +29,7 @@
                       (filter (fn [n] (not-empty (first n))))
                       (into {}))
 
-        ; percentage of transaction containing item -> frequencies(a,b) / total transaction.
+        ; percentage of transaction containing item -> frequencies.clj(a,b) / total transaction.
         support (->>
                   (for [key (keys frequencies)]
                     {key (float (/ (get frequencies key) total-items))})
@@ -45,7 +37,7 @@
 
         ;todo pruning with reduce to remove all infrequent data sets
 
-        ; percentage of b appearing in transactions containing a -> frequencies(a,b) / frequencies(a) ).
+        ; percentage of b appearing in transactions containing a -> frequencies.clj(a,b) / frequencies.clj(a) ).
         confidence (->>
                      (for [key (keys frequencies)]
                        (if (> (count key) 1)
@@ -63,21 +55,33 @@
 
     ;todo discard all single item sets from support, confidence & lift as it does not apply to them
 
-    (for [key (keys frequencies)]
-      (prn {:item       key
-            :frequency  (get frequencies key)
-            :support    (format "%.2f" (get support key))
-            :confidence (format "%.2f" (get confidence key))
-            :lift       (format "%.2f" (get lift key))
-            :created    (quot (System/currentTimeMillis) 1000)}))
+    ;(newline)
+    ;(prn "item set:")
+    ;(doseq [row item-set]
+    ;  (prn row))
 
-    ;  (prn (insert! db :frequency_item_set {:item       (generate-string key)
-    ;                                        :frequency  (get frequencies key)
-    ;                                        :support    (format "%.2f" (get support key))
-    ;                                        :confidence (format "%.2f" (get confidence key))
-    ;                                        :lift       "" ;(format "%.2f" (get lift key))
-    ;                                        :created    (quot (System/currentTimeMillis) 1000)})))
+    (newline)
+    (prn "assoc rules:")
+    (doseq [assoc (sort-by :lift
+                           (for [key (keys frequencies)]
+                             (if (get confidence key)
+                               (if (> (get support key) 0.1)
+                                 (if (> (get confidence key) 0.2)
+                                   {:transaction key
+                                    :frequency   (get frequencies key)
+                                    :support     (get support key)
+                                    :confidence  (get confidence key)
+                                    :lift        (get lift key)
+                                    :association (if (< (get lift key) 1) "negative" "positive")
+                                    })))))]
 
-    ;(prn (str "execution time: " (float (/ (- (clj-time.coerce/to-long (time/now)) time) 1000)) "s"))
+      (if (not (nil? assoc))
+        ; Support - is an indication of how frequently the item set appears in the data set.
+        ; Confidence - is an indication of how often the rule has been found to be true.
+        ; Lift - is this association rule interesting.
 
-    ))
+        (->
+          (update-in assoc [:support] (fn [x] (format "%.2f" x)))
+          (update-in [:confidence] (fn [x] (format "%.2f" x)))
+          (update-in [:lift] (fn [x] (format "%.2f" x)))
+          (prn))))))
