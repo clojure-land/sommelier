@@ -28,22 +28,31 @@
    email :- Email
    password :- Password
    salt :- Salt]
-  {(schema/optional-key :plain-text-password) PlainTextPassword})
+  {(schema/optional-key :plain_text_password) PlainTextPassword})
 
-(schema/defn get-id :- Id [user-record :- UserRecord]
+(schema/defn get-id :- Id
+  [user-record :- UserRecord]
+
   (:id user-record))
 
-(schema/defn get-email :- Email [user-record :- UserRecord]
+(schema/defn get-email :- Email
+  [user-record :- UserRecord]
+
   (:email user-record))
 
 (schema/defn get-plain-test-password :- (schema/maybe PlainTextPassword)
   [user-record :- UserRecord]
-  (:plain-text-password user-record))
 
-(schema/defn get-password :- Password [user-record :- UserRecord]
+  (:plain_text_password user-record))
+
+(schema/defn get-password :- Password
+  [user-record :- UserRecord]
+
   (:password user-record))
 
-(schema/defn get-salt :- Salt [user-record :- UserRecord]
+(schema/defn get-salt :- Salt
+  [user-record :- UserRecord]
+
   (:salt user-record))
 
 (schema/defn hashPlainTextPassword :- UserRecord
@@ -51,8 +60,8 @@
   [user :- UserRecord]
 
   (let [salt (if (empty? (get-salt user))
-                         (sha256 (crypto/base32 32))
-                         (get-salt user))]
+               (sha256 (crypto/base32 32))
+               (get-salt user))]
     (->
       (assoc user :password (sha256-hmac (get-plain-test-password user) salt))
       (assoc :salt salt))))
@@ -89,7 +98,7 @@
   (map->UserRecord (storage/transform row [[:id :read-uuid]] [:*] [])))
 
 (schema/defn fetch :- [UserRecord]
-  "Fetch database user records.
+  "Fetch database records.
 
   e.g. (fetch [(filter-by-id f7d9ffed-e535-4cd7-8f01-78948af8f528)]"
   [conditions :- [(schema/maybe {schema/Keyword schema/Any})]]
@@ -100,7 +109,7 @@
   (map hydrate (storage/fetch-entity storage/user [:*] conditions nil [:id])))
 
 (schema/defn save :- UserRecord
-  "Save database user record.
+  "Save database record.
 
   e.g. (save (->UserRecord(...))"
   [user :- UserRecord]
@@ -112,6 +121,6 @@
                   (hashPlainTextPassword user) user)]
 
     (map->UserRecord (storage/save-entity storage/user
-                                          (storage/transform db-user [] [:*] [:id :plain-text-password])
+                                          (storage/transform db-user [] [:*] [:id :plain_text_password])
                                           (storage/transform db-user [[:id :write-uuid]] [:id] [])
                                           [(filter-by-id (get-id db-user))]))))

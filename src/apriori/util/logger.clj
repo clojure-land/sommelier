@@ -77,32 +77,57 @@
   (ring-log/wrap-with-logger handler {:exceptions false
                                       :printer    :messages}))
 
-(defn humanize-schema-message [msg]
-  (humanize/explain msg
-                    (fn [x]
-                      (let [UUID java.util.UUID]
-                        (clojure.core.match/match
-                          x
-                          ['not ['instance? UUID item]]
-                          (str "The value is not a uuid but it should be.")
+(defn humanize-schema-exception
+  "Humanize schema exceptions."
+  [^Exception e]
 
-                          ['not ['not-timestamp item]]
-                          (str "The value is not yyyy-mm-ddThh:mm:ss.mmZ but it should be.")
+  (if (schema.utils/error? (ex-data e))
+    (humanize/explain (:error (ex-data e))
+                      (fn [x]
+                        (let [UUID java.util.UUID]
+                          (clojure.core.match/match
+                            x
+                            ['not ['instance? UUID uuid]]
+                            (str "The value is not a uuid but it should be.")
 
-                          ['not ['not-valid-key item]]
-                          (str "'" item "' is not [A-Za-z_][A-Za-z\\d_] but it should be.")
+                            ['not ['not-timestamp timestamp]]
+                            (str "The value is not yyyy-mm-ddThh:mm:ss.mmZ but it should be.")
 
-                          ['not ['not-email item]]
-                          (str "'" item "' is not an email address but it should be.")
+                            ['not ['not-file-size file-size]]
+                            (str "'" file-size "' is not a valid file size but it should be.")
 
-                          ['not [['not-length-in-range min max] item]]
-                          (str "'" item "' length must be between " min " and " max ".")
+                            ['not ['not-advertiser-id advertiser-id]]
+                            (str "'" advertiser-id "' is not a valid advertiser id but it should be.")
 
-                          ;['not ['not-in-range item length]]
-                          ;(str "'" item "' is not in range " length " but it should be.")
+                            ['not ['not-email email]]
+                            (str "'" email "' is not an email address but it should be.")
 
-                          :else x)))))
+                            ;['not [['not-length-in-range min max] item]]
+                            ;(str "'" item "' length must be between " min " and " max ".")
 
-(defn humanize-schema-exception [^Exception e]
-  (if (instance? schema.utils.ErrorContainer (ex-data e))
-    (humanize-schema-message (:error (ex-data e)))))
+                            :else x))))))
+
+  ;(humanize/explain (:error (ex-data e))
+  ;                  (fn [x]
+  ;                      (let [UUID java.util.UUID]
+  ;                        (clojure.core.match/match
+  ;                          x
+  ;                          ['not ['instance? UUID uuid]]
+  ;                          (str "The value is not a uuid but it should be.")
+  ;
+  ;                          ['not ['not-timestamp timestamp]]
+  ;                          (str "The value is not yyyy-mm-ddThh:mm:ss.mmZ but it should be.")
+  ;
+  ;                          ['not ['not-file-size file-size]]
+  ;                          (str "'" file-size "' is not a valid file size but it should be.")
+  ;
+  ;                          ['not ['not-advertiser-id advertiser-id]]
+  ;                          (str "'" advertiser-id "' is not a valid advertiser id but it should be.")
+  ;
+  ;                          ['not ['not-email email]]
+  ;                          (str "'" email "' is not an email address but it should be.")
+  ;
+  ;                          ['not [['not-length-in-range min max] item]]
+  ;                          (str "'" item "' length must be between " min " and " max ".")
+  ;
+  ;                          :else x)))))

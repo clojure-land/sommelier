@@ -2,7 +2,8 @@ CREATE TABLE IF NOT EXISTS apriori.user (
     id UUID PRIMARY KEY NOT NULL,
     email VARCHAR(225) NOT NULL,
     salt VARCHAR(225) NOT NULL,
-    password VARCHAR(225) NOT NULL
+    password VARCHAR(225) NOT NULL,
+    scope VARCHAR(225) NOT NULL -- (if grant=password then access_token scope is eg: read:profile, write:profile, read:project, write:project, read:associations, write:transactions)
 );
 
 CREATE TABLE IF NOT EXISTS apriori.client (
@@ -10,24 +11,43 @@ CREATE TABLE IF NOT EXISTS apriori.client (
     secret VARCHAR(225) NOT NULL, --php|bin2hex(openssl_random_pseudo_bytes(32));
     name VARCHAR(225) NOT NULL,
     redirect_url TEXT,
-    user_id UUID
+    scope VARCHAR(225) DEFAULT NULL, -- (if grant=client then access_token scope is eg: read:profile, read:project, read:associations, write:transactions)
+    user_id int(11) DEFAULT NULL -- protected resources
 );
 
 CREATE TABLE IF NOT EXISTS apriori.authorization_code (
+    id UUID PRIMARY KEY NOT NULL,
     authorization_code VARCHAR(225) NOT NULL,
-    client_id UUID NOT NULL,
-    user_id UUID references apriori.user(id) NOT NULL,
-    redirect_uri VARCHAR(225) NOT NULL,
-    expires TIMESTAMP NOT NULL
+    redirect_uri VARCHAR(225),
+    expires TIMESTAMP NOT NULL,
+    client_id UUID references apriori.client(id) NOT NULL,
+    scope VARCHAR(225) DEFAULT NULL,
+    user_id UUID PRIMARY KEY references apriori.user(id) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS apriori.access_token (
-    access_token UUID,
+    id UUID PRIMARY KEY NOT NULL,
+    access_token VARCHAR(225) NOT NULL,
+    scope VARCHAR(225) NOT NULL, -- (permission to a resource eg: read:profile) if scope
+    expires TIMESTAMP NOT NULL,
     client_id UUID references apriori.client(id) NOT NULL,
     user_id UUID references apriori.user(id) NOT NULL,
-    scope VARCHAR(225) NOT NULL,
-    expires TIMESTAMP NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS apriori.access_token (
+    scope VARCHAR(225) PRIMARY KEY NOT NULL
+);
+
+INSERT INTO apriori.scope (scope) VALUES ('read:profile'),
+                                         ('read:project'),
+                                         ('read:associations'),
+                                         ('write:profile'),
+                                         ('write:project'),
+                                         ('write:transactions'),
+                                         ('delete:profile'),
+                                         ('delete:project');
+
+--===
 
 CREATE TABLE IF NOT EXISTS apriori.project (
     id UUID PRIMARY KEY NOT NULL,

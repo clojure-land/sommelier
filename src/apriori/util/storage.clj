@@ -21,36 +21,32 @@
 
 (set-logger! (fn [sql millis] (logger/log :info {:sql sql :query-time millis})))
 
-(declare user api_key project user_project frequencies associations)
+(declare user client authorization_code project frequencies associations)
 
 (korma/defentity user
                  (korma/pk :id)
                  (korma/database db)
                  (korma/table :apriori.user)
-                 (korma/has-one api_key {:fk :user_id})
-                 (korma/has-many project {:fk :author})
-                 (korma/has-many user_project {:fk :user_id}))
+                 (korma/has-one authorization_code {:fk :user_id})
+                 (korma/has-many client {:fk :user_id}))
 
-(korma/defentity api_key
+(korma/defentity client
+                 (korma/pk :id)
+                 (korma/database db)
+                 (korma/table :apriori.client)
+                 (korma/belongs-to user {:fk :user_id}))
+
+(korma/defentity authorization_code
                  (korma/pk :user_id)
                  (korma/database db)
-                 (korma/table :apriori.api_key)
+                 (korma/table :apriori.authorization_code)
                  (korma/belongs-to user {:fk :user_id}))
 
 (korma/defentity project
                  (korma/pk :id)
                  (korma/database db)
                  (korma/table :apriori.project)
-                 (korma/belongs-to user {:fk :author})
-                 (korma/has-many user_project {:fk :project_id}))
-
-(korma/defentity user_project
-                 (korma/pk :user_id)
-                 (korma/pk :project_id)
-                 (korma/database db)
-                 (korma/table :apriori.user_project)
-                 (korma/belongs-to user {:fk :user_id})
-                 (korma/belongs-to project {:fk :project_id}))
+                 (korma/belongs-to user {:fk :author}))
 
 (korma/defentity frequencies
                  (korma/pk :id)
@@ -138,8 +134,6 @@
   (reduce (fn [query entity]
             (case entity
               :user (korma/with query user (with-fields entity fields))
-              :api_key (korma/with query api_key (with-fields entity fields))
-              :user-project (korma/with query user_project (with-fields entity fields))
               :project (korma/with query project (with-fields entity fields))
               :frequencies (korma/with query frequencies (with-fields entity fields))
               :associations (korma/with query associations (with-fields entity fields))))
@@ -219,21 +213,15 @@
                                       (first transform)
                                       (write-uuid (str ((first transform) map))))
 
-                        :write-timestamp (assoc map
-                                           (first transform)
-                                           (coerce/to-long ((first transform) map)))
+                        :write-timestamp (update-in map [(first transform)] coerce/to-timestamp)
 
                         :write-jsonb (assoc map
                                        (first transform)
                                        (write-pgobject "jsonb" ((first transform) map)))
 
-                        :read-timestamp (assoc map
-                                          (first transform)
-                                          (coerce/from-long ((first transform) map)))
+                        :read-timestamp (update-in map [(first transform)] coerce/to-date)
 
-                        :read-jsonb (assoc map
-                                      (first transform)
-                                      (read-pgobject ((first transform) map)))
+                        :read-jsonb (update-in map [(first transform)] read-pgobject)
 
                         map)) map transform) map)
 
@@ -241,4 +229,4 @@
             (select-keys map select) map)
 
           (if (not-empty remove)
-            (reduce (fn [map key] (dissoc map key)) map remove) map)) {}))
+            (reduce dissoc map remove) map)) {}))

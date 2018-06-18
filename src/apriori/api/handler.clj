@@ -21,7 +21,6 @@
             [crypto.random :as crypto]
             [apriori.util.repository.user :as user]
             [apriori.util.repository.project :as project]
-            [apriori.util.repository.user_project :as user_project]
 
             [clj-http.client :as http]
 
@@ -29,9 +28,11 @@
             [apriori.api.routes.auth :refer [auth-routes]]
             [apriori.api.routes.project :refer [project-routes]]))
 
+(schema/set-fn-validation! (not-empty (env :schema-validation)))
+
 ;; ***** Exception handlers *******************************************************
 
-(schema/set-fn-validation! (not-empty (env :schema-validation)))
+;(schema/set-fn-validation! (not-empty (env :schema-validation)))
 
 (defn ^:private generate-request-id
   "Generate a request identifier."

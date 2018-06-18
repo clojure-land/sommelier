@@ -8,6 +8,7 @@
     [cheshire.core :as json]
     [apriori.util.apriori :as apriori]
     [apriori.util.repository.user :as user]
+    [apriori.util.repository.client :as client]
     [ring.adapter.jetty :as jetty]
     [schema.core :as schema]
     [apriori.util.logger :as logger])
@@ -37,9 +38,18 @@
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
-   [nil "--email EMAIL" "Email address"]
-   [nil "--password PASSWORD" "Password"]
+   [nil "--email EMAIL" "Email address"
+    :default ""]
+
+   [nil "--password PASSWORD" "Password"
+    :default ""]
+
+   [nil "--name NAME" "Email address"]
+   [nil "--redirect-uri URI" "Redirect URI delimited by spaces."]
+   [nil "--scope SCOPE" "Scope delimited by spaces."]
    ["-h" "--help"]])
+
+;scope = read:profile, write:profile, read:project, write:project, write:transactions, read:associations.
 
 (defn validate-args
   "Validate arguments."
@@ -55,6 +65,7 @@
       (and (= 1 (count arguments))
            (#{"launch-api"
               "create-user"
+              "create-client"
               "apriori"} (first arguments))) {:action (first arguments) :options options}
 
       :else
@@ -92,33 +103,60 @@
         "launch-api" (jetty/run-jetty api/app {:port (get options :port)})
 
         "create-user" (try
-                        (user/save
+                        (->>
                           (user/map->UserRecord {:id                  (java.util.UUID/randomUUID)
                                                  :email               (get options :email)
-                                                 :plain-text-password (get options :password)
+                                                 :plain_text_password (get options :password)
                                                  :password            ""
-                                                 :salt                ""}))
+                                                 :salt                ""})
+                          (user/save)
+                          (exit 1))
                         (catch Exception e
-                          (prn e)
-                          (prn (logger/humanize-schema-exception e))))
+                          (exit 0 (logger/humanize-schema-exception e))))
 
-        "apriori" (apriori/run
-                    (test-data)
-                    ;[["beer"]
-                    ; ["beer" "cheese"]
-                    ; ["banana" "beer" "cheese" "nuts"]
-                    ; ["beer" "nuts"]
-                    ; ["beer" "cheese" "nuts"]
-                    ; ["banana" "cheese" "nuts"]
-                    ; ["beer" "cheese"]
-                    ; ["banana" "beer" "cheese" "nuts"]
-                    ; ["beer" "cheese" "nuts"]
-                    ; ["banana" "beer" "cheese" "nuts"]]
+                        ;(catch Exception e (logger/humanize-schema-exception e)))
 
-                    ;[["bread" "milk"]
-                    ; ["bread" "diaper" "beer" "eggs"]
-                    ; ["milk" "diaper" "beer" "coke"]
-                    ; ["bread" "milk" "diaper" "beer"]
-                    ; ["bread" "milk" "diaper" "coke"]]]
-                    )
-        "default" nil))))
+                        ;(try
+                        ;                (exit 0
+                        ;                      (user/save
+                        ;
+                        ;                        (schema/validate user/->UserRecord
+                        ;                        (user/map->UserRecord {:id                  (java.util.UUID/randomUUID)
+                        ;                                               :email               (get options :email)
+                        ;                                               :plain_text_password (get options :password)
+                        ;                                               :password            ""
+                        ;                                               :salt                ""}))))
+                        ;                (catch Exception e
+                        ;                  (exit 1 (logger/humanize-schema-exception e))))
+
+                        "create-client" (prn "")
+                        ;(try
+                        ;                  (exit 0 (client/map->ClientRecord {:id            (java.util.UUID/randomUUID)
+                        ;                                                     :name          "test"
+                        ;                                                     :client_id     "111"
+                        ;                                                     :client_secret "222"
+                        ;                                                     :grant_type    "password"
+                        ;                                                     :scope         ""}))
+                        ;                  (catch Exception e
+                        ;                    (exit 1 (logger/humanize-schema-exception e))))
+
+                        "apriori" (apriori/run
+                                    (test-data)
+                                    ;[["beer"]
+                                    ; ["beer" "cheese"]
+                                    ; ["banana" "beer" "cheese" "nuts"]
+                                    ; ["beer" "nuts"]
+                                    ; ["beer" "cheese" "nuts"]
+                                    ; ["banana" "cheese" "nuts"]
+                                    ; ["beer" "cheese"]
+                                    ; ["banana" "beer" "cheese" "nuts"]
+                                    ; ["beer" "cheese" "nuts"]
+                                    ; ["banana" "beer" "cheese" "nuts"]]
+
+                                    ;[["bread" "milk"]
+                                    ; ["bread" "diaper" "beer" "eggs"]
+                                    ; ["milk" "diaper" "beer" "coke"]
+                                    ; ["bread" "milk" "diaper" "beer"]
+                                    ; ["bread" "milk" "diaper" "coke"]]]
+                                    )
+                        "default" nil))))

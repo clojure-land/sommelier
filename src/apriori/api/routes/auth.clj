@@ -7,13 +7,20 @@
             [apriori.util.response :as response]
             [ring.util.http-response :as http-response]
             [cheshire.core :as json]
-            [clj-time.local :as local]
             [clj-http.client :as http]
             [clj-time.core :as t]
+            [clj-time.format :as format]
+            [clj-time.coerce :as coerce]
+            [crypto.random :as crypto]
             [ring.util.response :as ring]
             [environ.core :refer [env]]
             [apriori.util.logger :as logger]
-            [apriori.util.repository.user :as user]))
+            [apriori.util.repository.user :as user]
+            [apriori.util.repository.authorization-code :as auth-code]
+            [crypto.random :as crypto]
+            [apriori.domain.api :as api]
+            [clj-time.local :as local]
+            [pandect.algo.sha256 :refer :all]))
 
 ;; ***** Auth implementation ****************************************************
 
@@ -80,58 +87,91 @@
 
 ;; ***** API definition *******************************************************
 
+; scope: email, profile, projects.
+
 (schema/defschema Credentials
-  {(schema/required-key :email)    user/Email
-   (schema/required-key :password) user/Password})
+  {(schema/required-key :email)         user/Email
+   (schema/required-key :password)      user/Password})
 
 (schema/defschema Grant
-  {(schema/required-key :grant)         (schema/enum "authorization_code" "client_credentials")
+  {(schema/required-key :grant)         (schema/enum "code" "password" "client_credentials")
    (schema/required-key :client_id)     schema/Str
    (schema/required-key :client_secret) schema/Str
-   (schema/optional-key :code)          schema/Str})
+   (schema/optional-key :code)          schema/Str
+   (schema/optional-key :audience)      schema/Str})
 
-; sign in -> code
-; code -> token
+(schema/defschema Authorization
+  {:authorization_code schema/Str
+   :expires            (schema/maybe
+                         (schema/constrained
+                           schema/Str
+                           #(re-matches #"^\d+-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$" (name %)) 'not-timestamp))
+   })
 
-; token -> project
+(schema/defn authorize
+  [client-id :- (schema/maybe auth-code/ClientId) credentials :- Credentials]
 
-
-(schema/defn auth [credentials :- Credentials]
   (let [user (first (user/fetch [(user/filter-by-email (:email credentials))]))]
-
     (if (not-empty user)
       (let [hashed-password (->
-                              (assoc user :plain-text-password (:password credentials))
+                              (assoc user :plain_text_password (:password credentials))
                               (user/hashPlainTextPassword)
                               (user/get-password))]
 
         (if (= hashed-password (user/get-password user))
-          (response/ok nil {:auth 123})
+          (let [authorization-code (auth-code/spawn client-id (user/get-id user))]
+            (response/ok nil {:code    (auth-code/get-authorization-code authorization-code)
+                              :expires (local/format-local-time (auth-code/get-expires authorization-code) :date-time-no-ms)}))
           (response/unauthorized nil "Invalid login credentials!")))
       (response/unauthorized nil "Invalid login credentials!"))))
 
-(defn access_token [grant]
+(defn access-token [grant]
+  ;(:type grant)
+  ;(:client_id grant)
+  ;(:client_secret grant)
+  ;(:code code)
+
+  ;1) IF grant type = authorization_code client_credentials
+  ;2) query auth_code table where client_id => client and client_secret => client and code => code
+  ;3) IF result true then make & return token (step 8)
+  ;4) DELETE auth code from table
+  ;===
+  ;5) IF grant type = client_credentials
+  ;6) query client table where client_id => client and client_secret => client
+  ;7) IF result true then make & return token (step 8)
+
+  ;8) create token hash
+  ;9)
+
+  ;{
+  ; "access_token": "eyJz93a...k4laUWw",
+  ; "refresh_token": "GEbRxBN...edjnXbL",
+  ; "id_token": "eyJ0XAi...4faeEoQ",
+  ; "token_type": "Bearer"
+  ; }
+
   (response/ok nil nil))
 
 (def auth-routes
   (api
     (POST "/authorize" [] :tags ["auth"]
                           :summary "Request an authorize code."
-                          :query-params [{client_id :- schema/Str nil}
-                                         {redirect_uri :- schema/Str nil}]
+                          :query-params [client_id :- auth-code/ClientId
+                                         response_type :- (schema/enum "code" "token")
+                                         redirect_uri :- schema/Str
+                                         {client_secret :- schema/Str nil}
+                                         {scope :- schema/Str nil}]
                           :body [credentials Credentials]
-                          :responses {200 {:description "authorization"}
-                                      401 {:description "unauthorized"}} (auth credentials))
+                          :responses {200 {:schema      {:meta api/Meta :data Authorization}
+                                           :description "authorization"}
+                                      401 {:description "unauthorized"}} (authorize client_id credentials))
 
     (context "/oauth" [] :tags ["auth"]
                          (POST "/token" []
                            :summary "Request an access_token."
                            :body [grant Grant]
                            :responses {200 {:description "authorization"}
-                                       401 {:description "unauthorized"}} (access_token nil))
-
-                         )))
-
+                                       401 {:description "unauthorized"}} (access-token nil)))))
 
 ;(try
 ;  (->

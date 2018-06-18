@@ -5,6 +5,12 @@
             [cheshire.core :as json]
             [clojure.walk :as walk]))
 
+(def Timestamp
+  (schema/maybe
+    (schema/constrained
+      schema/Str
+      #(re-matches #"^\d+-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$" (name %)) 'not-timestamp)))
+
 (def Meta
   {schema/Keyword schema/Any
    :status        schema/Str

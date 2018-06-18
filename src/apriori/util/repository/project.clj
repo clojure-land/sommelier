@@ -3,8 +3,6 @@
             [apriori.util.logger :as logger]
             [schema.core :as schema]))
 
-
-
 (def Id
   schema/Uuid)
 
