@@ -21,9 +21,8 @@
             [crypto.random :as crypto]
             [apriori.util.repository.user :as user]
             [apriori.util.repository.project :as project]
-
             [clj-http.client :as http]
-
+            [apriori.domain.base :as base]
             [apriori.api.routes.meta :refer [meta-routes]]
             [apriori.api.routes.auth :refer [auth-routes]]
             [apriori.api.routes.project :refer [project-routes]]))
@@ -78,13 +77,6 @@
 
 ;; ***** API definition *******************************************************
 
-(defn get-base-uri [request]
-  "Generate a base uri from a ring request."
-  (let [scheme (name (:scheme request))
-        context (:context request)
-        hostname (get (:headers request) "host")]
-    (str scheme "://" hostname)))
-
 (def app
   (with-request-id
     (logger/wrapper-with-logger
@@ -99,36 +91,35 @@
                       :data {:info                {:title       "API"
                                                    :version     (health/get-version)
                                                    :description ""}
-                             :securityDefinitions {:api_key {:type "Bearer"
-                                                             :name "Authorization"
-                                                             :in   "header"}}}}}
+                             :securityDefinitions {:authorization {:type "apiKey"
+                                                                  :name "Authorization"
+                                                                  :in   "header"}}}}}
 
-        ;https://freid001.auth0.com/login?client=Ms08md6V1yC2CGCcnsFL4kZvZFlzlWA3&redirect_uri=http://localhost:3000/api/authenticate/user&response_type=code&scope=openid profile
+         (context "/api" []
+           meta-routes
+           auth-routes
+           project-routes
 
-        (context "/api" []
-          meta-routes
-          auth-routes
-          project-routes
+           (GET "/user" []
+             ;:query-params [token]
+             :auth-roles #{"read"}
+             :current-user user
 
-          (GET "/user" []
-            :query-params [token]
-            :auth-roles #{"read"}
-            :current-user user
+             (response/ok nil user))
 
-            (response/ok nil user))
+           ;(GET "/users" request
+           ;  (->
+           ;    (str (env :oauth-domain) "/oauth/token")
+           ;    (http/post {:debug        false
+           ;                :content-type :json
+           ;                :body         (json/encode {:grant_type    "client_credentials"
+           ;                                            :client_id     (env :oauth-client-id)
+           ;                                            :client_secret (env :oauth-client-secret)
+           ;                                            :redirect_uri  (base/get-base-uri request)})})
+           ;    (get :body)
+           ;    (json/parse-string)
+           ;    (response/ok nil)))
+           )
 
-          (GET "/users" request
-            (->
-              (str (env :oauth-domain) "/oauth/token")
-              (http/post {:debug        false
-                          :content-type :json
-                          :body         (json/encode {:grant_type    "client_credentials"
-                                                      :client_id     (env :oauth-client-id)
-                                                      :client_secret (env :oauth-client-secret)
-                                                      :redirect_uri  (get-base-uri request)})})
-              (get :body)
-              (json/parse-string)
-              (response/ok nil))))
-
-        (undocumented
-          (route/not-found (response/not-found nil nil)))))))
+                     (undocumented
+                       (route/not-found (response/not-found nil nil)))))))

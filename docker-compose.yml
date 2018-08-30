@@ -13,6 +13,8 @@ apriori:
     DB_USER: apriori
     DB_PASSWORD: "123"
     SCHEMA_VALIDATION: "true"
+  env_file:
+    - auth.env
 
 postgres:
   image: postgres:9.4
