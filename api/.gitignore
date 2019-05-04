@@ -1,7 +1,6 @@
 /target
 /classes
 /checkouts
-/resources/parameters.env
 pom.xml
 pom.xml.asc
 *.jar
@@ -12,6 +11,3 @@ pom.xml.asc
 /.nrepl-port
 .hgignore
 .hg/
-.gradle/
-
-auth.env

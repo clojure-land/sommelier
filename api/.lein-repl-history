@@ -1,0 +1,58 @@
+(require '[buddy.sign.jwt :as jwt])
+(require '[buddy.sign.jws :as jws])
+(require '[buddy.core.codecs.base64 :as b64])
+(require '[cheshire.core :as json])
+(require '[clojure.java.io :as io])
+(def key (keys/jwk->public-key {:alg "RS256",
+                       :kty "RSA",
+                       :use "sig",
+                       :x5c
+                            ["MIIC/zCCAeegAwIBAgIJXdmZSC3sA76qMA0GCSqGSIb3DQEBCwUAMB0xGzAZBgNVBAMTEmZyZWlkMDAxLmF1dGgwLmNvbTAeFw0xODA2MDUwOTQwMDdaFw0zMjAyMTIwOTQwMDdaMB0xGzAZBgNVBAMTEmZyZWlkMDAxLmF1dGgwLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALhHcv+6F0s1SDKTJBsm++8g+X75k83Y+MU9hsBj6vdTDtCszAHrCEYbu3iKNPym1ncg8ZG1RxaDxQaU40zAY/ZB3k87c5GuVYa/T27AyZB1XzQDUXpxjZpDRSwWz09eM2Wca1bgH5s8GjPvGtAeHGj27eBLjOkR6ll3SMpKVpqdYIscFVl/tPgG3PCPrfvY0KHPUydH7g+da2xQPA8B/AG/aoHIbC1HL5Gzt9ptgxNBrR6y2Q9aqJmEk+C+03GoClqwz/rJQHA9PtFZgW8alvCzQ+F6l2EEuBz/swMZEKHpET3L0PGhBfvj8czLKdY1qjY6g/h4bX5RZa+YgjioedECAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUHHrT6yACn3Fu/u1/MXpQJu/edTIwDgYDVR0PAQH/BAQDAgKEMA0GCSqGSIb3DQEBCwUAA4IBAQAXQwb8gluFuW6ABtqWnUIsdT/IoBZT8NB/l/SpaPsa5PiPodeiCiuEMQUe89Qps5fpgewLAXWvpOyYwW6HPlEIec8fdViRiNPnpy8moHgy5dN9ahhmP74aYeuSmkhps2MF+d16RXCCQPFZQKySWRCvEqKqnVCtP1fYiESCqPkMLs/XunvyRXs1BHypvsjZ0EAdA9JBLgmpDY/h2HjYcMiISZbUbAbxVTH+U9VFoJrBGN8o6xsrzYKcbdTzdxcKhep7aobcim5DTvlpsbs7A7yjD3Octzqd6qIsJNEydp6/UQZOC0LY5GYU+CaCq3asEmgqhFbSW0FJDyiKhPCseC5M"],
+                       :n
+                            "uEdy_7oXSzVIMpMkGyb77yD5fvmTzdj4xT2GwGPq91MO0KzMAesIRhu7eIo0_KbWdyDxkbVHFoPFBpTjTMBj9kHeTztzka5Vhr9PbsDJkHVfNANRenGNmkNFLBbPT14zZZxrVuAfmzwaM-8a0B4caPbt4EuM6RHqWXdIykpWmp1gixwVWX-0-Abc8I-t-9jQoc9TJ0fuD51rbFA8DwH8Ab9qgchsLUcvkbO32m2DE0GtHrLZD1qomYST4L7TcagKWrDP-slAcD0-0VmBbxqW8LND4XqXYQS4HP-zAxkQoekRPcvQ8aEF--PxzMsp1jWqNjqD-HhtflFlr5iCOKh50Q",
+                       :e "AQAB",
+                       :kid "RTg4RkE4REYwODc5QTlFQjBFNzI3MTdBQkY5OEY5NTJBRjhGRDE0MQ",
+                       :x5t "RTg4RkE4REYwODc5QTlFQjBFNzI3MTdBQkY5OEY5NTJBRjhGRDE0MQ"}))
+(require '[buddy.core.keys :as keys])
+exit
+(require '[buddy.sign.jwt :as jwt])
+(require '[buddy.sign.jws :as jws])
+(require '[buddy.core.codecs.base64 :as b64])
+(require '[cheshire.core :as json])
+(require '[clojure.java.io :as io])
+(require '[buddy.core.keys :as keys])
+exit
+(require '[buddy.core.keys :as keys])
+exit
+(require '[buddy.sign.jwt :as jwt])
+(require '[buddy.sign.jws :as jws])
+(require '[buddy.core.codecs.base64 :as b64])
+(require '[cheshire.core :as json])
+(require '[clojure.java.io :as io])
+(require '[buddy.core.keys :as keys])
+exit
+(require '[clojure.java.io :as io])
+(io/resource  "https://freid001.auth0.com/.well-known/jwks.json")
+(io/resource (slurp "https://freid001.auth0.com/.well-known/jwks.json"))
+(slurp "https://freid001.auth0.com/.well-known/jwks.json")
+exit
+(cond (= 1 1))
+(cond (= 1 1) (= 2 2))
+(cond (= 1 1) (= 2 1))
+(cond (= 1 2) (= 2 2))
+(cond (= 1 1) :a (= 2 1) :b)
+(cond (= 1 1) :a (= 2 2) :b)
+(cond (= 1 2) :a (= 2 2) :b)
+(cond (= 1 2) :a (= 2 3) :b)
+(cond (= 1 2) :a (= 2 3) :b :else :c)
+(cond (= 1 2) :a (= 2 2) :b :else :c)
+exit
+(< nil 0212)
+exit
+(l/local-now)
+(require '[clj-time.local :as l])
+(l/local-now)
+(< 1 2)
+(< 1 0)
+(< 1554873180 1554838062255)
+exit
