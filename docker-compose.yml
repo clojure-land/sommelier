@@ -1,33 +1,40 @@
-apriori:
-  image: apriori:latest
-  command: run
-  links:
-    - postgres
-#    - redis
-  ports:
+version: "3"
+services:
+  api:
+    image: sommelier/api:latest
+    command: run
+    networks:
+      - sommelier
+    ports:
     - 3000:3000
-  environment:
-    DB_HOST: postgres
-    DB_PORT: 5432
-    DB_NAME: apriori
-    DB_USER: apriori
-    DB_PASSWORD: "123"
-    SCHEMA_VALIDATION: "true"
-  env_file:
+    env_file:
     - auth.env
 
-postgres:
-  image: postgres:9.4
-  restart: always
-  ports:
-    - 5432:5432
-  environment:
-    POSTGRES_USER: apriori
-    POSTGRES_PASSWORD: 123
-    POSTGRES_DB: apriori
+  mongo:
+    image: mongo:latest
+    networks:
+      - sommelier
+    ports:
+      - 27017:27017
+    environment:
+      - MONGODB_USERNAME=admin
+      - MONGODB_PASSWORD=abc123
+      - MONGODB_DATABASE=sommelier
+      - MONGODB_ROOT_PASSWORD=abc123
 
-#redis:
-#  image: redis:alpine
-#  ports:
-#    - 6379:6379
-#  #environment:
+  mongo-express:
+    image: mongo-express:latest
+    networks:
+      - sommelier
+    depends_on:
+      - mongo
+    restart: on-failure:5
+    ports:
+      - 8080:8081
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=octane_admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=abc123
+
+networks:
+  sommelier:
+    driver: bridge
