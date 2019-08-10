@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 start(){
-    echo "--> INFO: starting api..."
-    java -jar api-*-standalone.jar
+    echo "--> INFO: starting apriori..."
+    java -jar apriori-*-standalone.jar
 }
 
 case $1 in

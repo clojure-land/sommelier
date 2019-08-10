@@ -6,7 +6,9 @@
             [domain.response :refer :all]
             [domain.project :refer :all]
             [monger.json]
-            [ring.util.response :as ring])
+            [ring.util.response :as ring]
+            [routes.transactions :refer [transactions-routes]]
+            [routes.jobs :refer [jobs-routes]])
   (:import [org.bson.types ObjectId]))
 
 ;; ***** Project implementation ********************************************************
@@ -61,7 +63,7 @@
     (POST "/" []
       :tags ["project"]
       :operationId "createProject"
-      :summary "Creates a new project"
+      :summary "Creates a new project."
       :body [project ProjectSchema]
       ;:middleware [#(util.auth/auth! %)]
       ;:current-user profile
@@ -115,4 +117,6 @@
                     403 {:schema {:meta Meta :errors [ErrorObject]}
                          :description "unauthorized"}
                     404 {:schema {:meta Meta :errors [ErrorObject]}
-                         :description "not found"}} (delete-project id "")))))
+                         :description "not found"}} (delete-project id "")))
+    transactions-routes
+    jobs-routes))

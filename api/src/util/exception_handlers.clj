@@ -22,16 +22,19 @@
   (clojure.core.match/match
     error
     ['not ['datetime? value]]
-    (str "Value is expected to be rfc3339 format, yyyy-mm-ddThh:mm:ssZ.")
+    (str "The value is expected to be rfc3339 format, yyyy-mm-ddThh:mm:ssZ.")
 
     ['not ['alphanumeric? value]]
-    (str "Value is expected to be alphanumeric.")
+    (str "The value is expected to be alphanumeric.")
 
     ['not [['length? min max] value]]
-    (str "Length is expected to be between " min " and " max " characters long.")
+    (str "The length is expected to be between " min " and " max " characters long.")
+
+    ['not [['size? min max] value]]
+    (str "The size is expected to be between " min " and " max ".")
 
     ['not [['between? min max] value]]
-    (str "Value is expected to be between " min " and " max ".")
+    (str "The value is expected to be between " min " and " max ".")
 
     :else error))
 

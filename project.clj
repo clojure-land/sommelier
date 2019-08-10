@@ -1,10 +1,10 @@
-(defproject apriori "0.1.0-SNAPSHOT"
+(defproject sommelier "0.1.0-SNAPSHOT"
 
   :dependencies []
 
   :resource-paths ["resources"]
 
-  :sub ["api"] ; "apriori"]
+  :sub ["api" "job" "apriori"]
 
   :profiles {:default [:user]
              :user {:plugins [

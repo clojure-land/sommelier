@@ -1,5 +1,6 @@
 (defproject api "0.1.0"
-  :dependencies [[org.clojure/clojure "1.9.0"]
+  :dependencies [
+                 [org.clojure/clojure "1.9.0"]
                  [org.clojure/tools.logging "0.4.0"]
                  [org.clojure/tools.cli "0.3.5"]
                  [org.clojure/data.json "0.2.6"]
@@ -12,6 +13,7 @@
                                                     com.sun.jmx/jmxri]]
                  [metosin/compojure-api "1.1.11"]
                  [metosin/ring-swagger "0.24.3"]
+                 [net.mikera/core.matrix "0.62.0"]
                  [compojure "1.6.0"]
                  [cheshire "5.8.0"]
                  [clj-time "0.14.2"]

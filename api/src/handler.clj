@@ -1,24 +1,23 @@
 (ns handler
-  (:require
-    [domain.response :refer :all]
-    [util.request :refer :all]
-    [util.response :refer :all]
-    [util.auth :refer :all]
-    [util.exception-handlers :refer :all]
-    [compojure.api.sweet :refer :all]
-    [compojure.api.exception :as ex]
-    [compojure.route :as route]
-    [ring.logger.messages :as ring-messages]
-    [ring.logger :as ring-log]
-    [schema.core :as schema]
-    [environ.core :refer [env]]
-    [routes.projects :refer [projects-routes]]
-    [routes.project :refer [project-routes]]
-    [routes.transactions :refer [transactions-routes]]
-    [clojure.tools.logging :as log]
-    [clj-time.core :as time]
-    [monger.core :as mg]
-    [monger.command :as cmd]))
+  (:require [domain.response :refer :all]
+            [util.request :refer :all]
+            [util.response :refer :all]
+            [util.auth :refer :all]
+            [util.exception-handlers :refer :all]
+            [compojure.api.sweet :refer :all]
+            [compojure.api.exception :as ex]
+            [compojure.route :as route]
+            [ring.logger.messages :as ring-messages]
+            [ring.logger :as ring-log]
+            [schema.core :as schema]
+            [environ.core :refer [env]]
+            [routes.projects :refer [projects-routes]]
+            [routes.project :refer [project-routes]]
+            [routes.job :refer [job-routes]]
+            [clojure.tools.logging :as log]
+            [clj-time.core :as time]
+            [monger.core :as mg]
+            [monger.command :as cmd]))
 
 ;; ***** Api implementation ********************************************************
 
@@ -108,7 +107,7 @@
         (context "/v1" []
           (GET "/health" []
             :operationId "getHealth"
-            :summary "Retrieves the health check"
+            :summary "Retrieves the health check."
             :responses {200 {:description "ok"}} (health))
 
           (GET "/session" []
@@ -121,7 +120,7 @@
 
           projects-routes
           project-routes
-          transactions-routes)
+          job-routes)
 
         (undocumented
           (route/not-found

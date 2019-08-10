@@ -1,18 +1,32 @@
-# Apriori
-
+# Sommelier
 
 ## Requrirments 
 * [Docker](https://www.docker.com/)
-* [Gradle](https://gradle.org/) 
 * [Leiningen](https://leiningen.org/)
 * [Auth0](https://auth0.com/)
 
 ## Installation
 
+### Local
+
 ```bash
 // start
-gradle build run
+./gradlew build run
 
 // stop
-gradle stop
+./gradle stop
 ```
+
+### AWS
+
+```bash
+// start
+./gradlew build publish deploy
+```
+
+## Design
+
+![design](resources/img/design.jpg)
+
+## Usage
+

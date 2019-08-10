@@ -45,8 +45,29 @@ task build {
                     '--build-arg', "GHASH=${deployStream.toString().trim()}",
                     '-t', "sommelier/api:${version}", "."
         }
+
+        exec {
+            workingDir './apriori'
+            commandLine 'lein', 'uberjar'
+        }
+
+        exec{
+            workingDir './apriori'
+            commandLine 'docker', 'build',
+                    '-t', "sommelier/apriori:${version}", "."
+        }
     }
 }
+
+/**
+ * Publish
+ */
+task publish {}
+
+/**
+ * Deploy
+ */
+task deploy {}
 
 /**
  * Run

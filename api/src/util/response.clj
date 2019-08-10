@@ -31,3 +31,14 @@
   [id]
 
   (api-response (->ApiError {:status "not found"} [{:message (str "No project found for id: " id)}]) 404 []))
+
+;; ***** Job implementation ********************************************************
+
+(defn job->resource-object
+  "Transforms a job into a resource object."
+  [jobs]
+
+  (map (fn [row]
+         {:type       "job"
+          :id         (get row :_id)
+          :attributes (dissoc row :_id)}) jobs))

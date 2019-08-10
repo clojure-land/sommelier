@@ -9,15 +9,28 @@ services:
     - 3000:3000
     env_file:
     - auth.env
+    restart: on-failure:3
+
+  apriori:
+    image: sommelier/apriori:latest
+    command: run
+    networks:
+      - sommelier
+    environment:
+      - AWS_ACCESS_KEY_ID=111
+      - AWS_SECRET_ACCESS_KEY=111
+      - AWS_REGION=us-east-1
+    restart: on-failure:3
 
   mongo:
     image: mongo:latest
     networks:
       - sommelier
+    restart: on-failure:3
     ports:
       - 27017:27017
     environment:
-      - MONGODB_USERNAME=admin
+      - MONGODB_USERNAME=sommelier
       - MONGODB_PASSWORD=abc123
       - MONGODB_DATABASE=sommelier
       - MONGODB_ROOT_PASSWORD=abc123
@@ -28,12 +41,39 @@ services:
       - sommelier
     depends_on:
       - mongo
-    restart: on-failure:5
+    restart: on-failure:3
     ports:
       - 8080:8081
     environment:
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=octane_admin
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
       - ME_CONFIG_MONGODB_ADMINPASSWORD=abc123
+
+  localstack:
+    image: localstack/localstack:latest
+    networks:
+      - sommelier
+    ports:
+      - "4567-4584:4567-4584"
+      - "${PORT_WEB_UI-8081}:${PORT_WEB_UI-8080}"
+    environment:
+      - AWS_REGION=us-east-1
+      - SERVICES=sqs
+    restart: on-failure:3
+
+  awscli:
+    image: mesosphere/aws-cli:latest
+    networks:
+      - sommelier
+    environment:
+      - AWS_ACCESS_KEY_ID=111
+      - AWS_SECRET_ACCESS_KEY=111
+      - AWS_REGION=us-east-1
+    entrypoint: ['/bin/sh', '/usr/local/bin/localstack.sh']
+    command: run
+    tty: true
+    volumes:
+      - './localstack.sh:/usr/local/bin/localstack.sh'
+    restart: on-failure:3
 
 networks:
   sommelier:

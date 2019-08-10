@@ -6,124 +6,115 @@
             [domain.response :refer :all]
             [domain.project :refer :all]
             [domain.transactions :refer :all]
+            [domain.job :refer :all]
             [monger.json]
+            [clojure.core.matrix :refer :all]
             [clojure.math.combinatorics :as combo])
   (:import [org.bson.types ObjectId]))
 
 ;; ***** Transactions implementation ********************************************************
 
-(defn- random-transaction [x]
-  (let [transaction (take
-                      (rand-int x)
-                      ((partial shuffle ["a" "b" "p" "m" "r", "k", "o", "t", "pp", "m", "wm"])))]
+;(defn- random-transaction [x]
+;  (let [transaction (take
+;                      (rand-int x)
+;                      ((partial shuffle ["a" "b" "p" "m" "r" "k" "o" "t" "pp" "m" "wm"])))]
+;
+;    (if (empty? transaction)
+;      (random-transaction x)
+;      (clojure.string/join "," transaction))))
 
-    (if (empty? transaction)
-      (random-transaction x)
-      (clojure.string/join "," transaction))))
+(defn- matrix-concat
+  "Concatenates each coll in matrix.
 
-(defn- coll-concat
-  "Returns a string foreach item in the collection."
-  [coll]
+  e.g. (matrix-concat [[1 2 3] [4 5 6]])"
+  [matrix]
 
-  (map #(clojure.string/join "," %) coll))
+  (if (matrix? matrix)
+    (map (fn [coll] (clojure.string/join "," coll)) matrix) []))
 
-(defn- coll-with-subsets
-  "Returns subsets foreach item in collection."
-  [coll]
+(defn- matrix-subsets
+  "Returns subsets of each coll in matrix.
 
-  (apply concat (map (fn [items]
+   e.g. (matrix-subsets [[1 2 3] [4 5 6]])"
+  [matrix]
 
-                       (filter #(> (count %) 1) (combo/subsets items))
+  (if (matrix? matrix)
+    (apply concat (map (fn [coll] (combo/subsets coll)) matrix)) []))
 
-                          ;check if already exists
-                          ;{(coll-concat items)}
-                          ;(prn subsets)
-                          ;(clojure.string/join "," items)
-                          ;(assoc subsets (coll-concat items) (filter #(> (count %) 1) (combo/subsets items)))
+(defn- group-by-operation
+  "Groups transaction-freq by insert or update operation."
+  [job-id transaction-freq]
 
-                       ) {} coll)))
+  (let [transactions (mdb/get-transactions job-id {:transaction {"$in" (keys transaction-freq)}})]
+    (reduce (fn [group freq]
+              (let [transaction (first (filter #(= (get % :transaction) (key freq)) transactions))]
+                (if (empty? transaction)
+                  (assoc-in group [:insert (key freq)] (val freq))
+                  (assoc-in group [:update (get transaction :_id)] (val freq))))) {:insert {} :update {}} transaction-freq)))
 
-(defn- group-transactions
-  "Groups transactions into insert or update."
-  [id new-transactions]
+(defn- get-scheduled-job
+  "Retrieves the scheduled job, if none exists then creates a new one."
+  [project-id]
 
-  (let [old-transactions (mdb/get-transactions id {:transaction {"$in" new-transactions}})]
-    (reduce (fn [return new-transaction]
-              (let [old-transaction (first (filter #(= (get % :transaction) new-transaction) old-transactions))]
-                (if (empty? old-transaction)
-                  (if (get-in return [:insert new-transaction])
-                    (update-in return [:insert new-transaction] inc)
-                    (assoc-in return [:insert new-transaction] 1))
-                  (if (get-in return [:update (get old-transaction :_id)])
-                    (update-in return [:update (get old-transaction :_id)] inc)
-                    (assoc-in return [:update (get old-transaction :_id)] 1)))))
-            {:insert {} :update {}} new-transactions)))
+  (let [job (mdb/get-job {:project-id (ObjectId. (str project-id)) :state "scheduled"})]
 
-(defn- save-transactions-frequency
-  "Inserts or updates transactions frequency."
-  [id author body]
+    (if (not= job [])
+      (job->resource-object job)
+      (job->resource-object (vector (mdb/save-job nil {:project-id (ObjectId. (str project-id)) :state "scheduled" :transactions 0}))))))
 
-  (if (and (mdb/objectId? id)
-           (not= (mdb/get-project {:_id (ObjectId. (str id)) :author author}) []))
+(defn- save-transactions-count
+  [job-id transactions-count]
 
-    (let [stmt (->>
-                 (get body :transactions)
-                 (coll-with-subsets)
-                 ;(coll-concat)
-                 ;(group-transactions id)
-                 (prn)
-                 )]
+  (mdb/save-job job-id {"$inc" {:transactions transactions-count}}))
 
-        (if (not (empty? (get stmt :insert)))
-          (mdb/insert-transactions id (map (fn [row] {:transaction (key row) :count (val row)}) (get stmt :insert))))
+(defn- ids [transactions]
+  (reduce (fn [ids update]
+            (assoc ids (val update) (conj (get ids (val update)) (key update)) )) {} transactions))
 
-        (if (not (empty? (get stmt :update)))
-          (doseq [row (get stmt :update)]
-            (mdb/update-transactions id {:_id (key row)} {"$inc" {:count (val row)}})))
+(defn- save-transactions-freq
+  "Inserts or updates frequency of transactions."
+  [project-id author body]
 
-    (api-response (->ApiData {:status "accepted"} [{:type "job" :id "" :attributes {:status "scheduled"}}]) 202 [{:content-location (str "/project/" id "/job")}]))
-  (project-not-found id)))
+  (if (and (mdb/objectId? project-id)
+           (not= (mdb/get-project {:_id (ObjectId. (str project-id)) :author author}) []))
 
-;"a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"
-;"a","b","c","d","e","f","g","h","i","j","k","l"
+    (let [job (get-scheduled-job project-id)
+          transactions (->>
+                         (get body :transactions)
+                         (matrix-subsets)
+                         (matrix-concat)
+                         (frequencies)
+                         (group-by-operation (get (first job) :id)))]
+
+      (do
+        (if (not (empty? (get transactions :insert)))
+          (mdb/save-transactions (get (first job) :id) nil (map (fn [row] {:transaction (key row) :count (val row)}) (get transactions :insert))))
+
+        (if (not (empty? (get transactions :update)))
+          (doseq [row (ids (get transactions :update))]
+            (mdb/save-transactions (get (first job) :id) {:_id {"$in" (val row)}} {"$inc" {:count (key row)}})))
+
+        (save-transactions-count (get (first job) :id) (count (get body :transactions)))
+
+        (api-response (->ApiData {:status "accepted"} job) 202 [{:content-location (str "/v1/job/" (get (first job) :id))}])))
+  (project-not-found project-id)))
 
 ;; ***** Transactions definition *******************************************************
 
 (def transactions-routes
-  (context "/transactions" []
-    ;(GET "/job/:id" []
-    ;  :path-params [id :- ProjectId]
-    ;
-    ;  (api-response (->ApiData {:status "ok"} (mdb/count-transactions id)) 200 []))
-    ;
-    ;(POST "/job/:id")
-
-    (POST "/:id" []
-      :path-params [id :- ProjectId]
-      :tags ["transactions"]
-      :operationId "appendTransactions"
-      :summary "Appends transactions to scheduled job."
-      :body [transactions TransactionsSchema]
-      ;:middleware [#(util.auth/auth! %)]
-      ;:current-user profile
-      :responses {202 {;:schema {:meta Meta ::data [{:type "job" :attributes {:status "scheduled,running,done,failed"}}]
-                       ;content-location = /project/1/job
-                       :description "accepted"}
+  (POST "/:id/transactions" []
+    :path-params [id :- ProjectId]
+    :tags ["project"]
+    :operationId "appendTransactions"
+    :summary "Appends transactions for processing."
+    :body [transactions TransactionsSchema]
+    ;:middleware [#(util.auth/auth! %)]
+    ;:current-user profile
+    :responses {202 { ;:schema {:meta Meta :data (vector (assoc DataObject :attributes JobSchema))}
+                     :description "accepted"}
                   400 {:schema {:meta Meta :errors [ErrorObject]}
                        :description "bad request"}
                   403 {:schema {:meta Meta :errors [ErrorObject]}
                        :description "unauthorized"}
                   404 {:schema {:meta Meta :errors [ErrorObject]}
-                       :description "not found"}} (save-transactions-frequency id "" transactions))))
-
-; POST - /transactions/project/:id
-
-; GET - /project/:id/jobs
-; GET - /jobs/project/:id
-; GET - /job/:id
-
-; POST - /transactions/job/:id -> 200,404 ir 410
-; GET  - /transactions/job/:id -> 200
-
-; GET - /associations/project/:id?q=...
-; GET - /associations/job/:id?q=...
+                       :description "not found"}} (save-transactions-freq id "" transactions)))
