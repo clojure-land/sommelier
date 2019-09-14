@@ -35,10 +35,6 @@
   [job]
 
   (let [db (mg/get-db conn "sommelier")]
-
-    ;(prn (dissoc (update job :state "processing") :_id))
-    ;(dissoc (update job :state "processing") :_id)
-
     (mc/update-by-id db "job" (ObjectId. (str (job :_id))) {:project-id (ObjectId. (str (job :project-id)))
                                                             :state "processing"
                                                             :transactions (job :transactions)})))

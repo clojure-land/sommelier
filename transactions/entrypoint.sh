@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 start(){
-    echo "--> INFO: starting apriori consumer..."
-    java -jar apriori-*-standalone.jar
+    echo "--> INFO: starting transactions consumer..."
+    java -jar transactions-*-standalone.jar
 }
 
 case $1 in
