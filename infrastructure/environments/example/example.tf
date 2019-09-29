@@ -5,36 +5,46 @@ terraform {
 }
 
 variable account {}
+
 variable name {}
+
 variable region {
   default = "eu-west-2"
 }
+
 variable version {}
+
 variable security_groups {
   type = "list"
   default = [
-//    "sg-b6fed0cd",
-//    "sg-010112f99d8eec969"
+    "sg-16173348"
   ]
 }
+
 variable subnet_ids {
   type = "list"
   default = [
-//    "subnet-331a3619",
-//    "subnet-931408e5",
-//    "subnet-fe5c5bc3",
-//    "subnet-a12d03f9"
+    "subnet-c9ec00c7",
+    "subnet-c01f2eee",
+    "subnet-afb8c691",
+    "subnet-a086adc7",
+    "subnet-80e01acd",
+    "subnet-481c2b14"
   ]
 }
+
 variable min_instance_count {
   default = "1"
 }
+
 variable max_instance_count {
   default = "1"
 }
+
 variable desired_instance_count {
   default = "1"
 }
+
 variable desired_app_count {
   default = "1"
 }
@@ -52,11 +62,11 @@ variable desired_app_count {
 //}
 
 variable ami {
-  default = "ami-71ef560b"
+  default = "ami-4f8d912b"
 }
 
-module example-app {
-  source = "..\/..\/plan"
+module example-sommelier {
+  source = "../../plan"
 
   region = "${var.region}"
   account = "${var.account}"
@@ -65,15 +75,9 @@ module example-app {
   app_version = "${var.version}"
   ami = "${var.ami}"
   instance_type = "t2.micro"
-//  cpu = 256
-//  memory = "250"
-//  db_host = "example-shared-octane-s2s-sftp.crhvhlvhwshi.us-east-1.rds.amazonaws.com"
-//  db_name = "${var.db_name}"
-//  db_port = 3306
-//  db_user = "${data.aws_kms_secrets.example_rds.plaintext["rds_username"]}"
-//  db_password = "${data.aws_kms_secrets.example_rds.plaintext["rds_password"]}"
+  cpu = 256
+  memory = "250"
   security_groups = ["${var.security_groups}"]
-  ssh_key = "" //<<<
   min_instance_count = "${var.min_instance_count}"
   max_instance_count = "${var.max_instance_count}"
   desired_instance_count = "${var.desired_instance_count}"

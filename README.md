@@ -10,18 +10,26 @@
 ### Local
 
 ```bash
+// containerize
+./gradlew containerize 
+
 // start
-./gradlew build run
+./gradlew run
+
+// run test suite
+./gradlew cucumber
+./gradlew cucumber -Dtag="@SmokeTest"
+./gradlew cucumber -Dtag="@IntegrationTest"
 
 // stop
-./gradle stop
+./gradlew stop
 ```
 
 ### AWS
 
 ```bash
 // start
-./gradlew build publish deploy
+./gradlew containerize publish deploy
 ```
 
 ## Design

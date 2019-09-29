@@ -7,7 +7,6 @@ variable "ami" {}
 variable "security_groups" {
   type = "list"
 }
-variable "ssh_key" {}
 variable instance_type {}
 variable "min_instance_count" {}
 variable "max_instance_count" {}
@@ -21,10 +20,11 @@ variable "ssl_cert_id" {}
 
 provider aws {
   region = "${var.region}"
+  profile = "freid"
 }
 
 variable appname {
-  default = "app"
+  default = "sommelier"
 }
 
 resource "aws_ecs_cluster" "cluster" {
@@ -44,7 +44,6 @@ resource "aws_launch_configuration" "launch_config" {
   iam_instance_profile = "${aws_iam_instance_profile.api-instance-profile.name}"
 
   security_groups = ["${var.security_groups}"]
-  key_name = "${var.ssh_key}"
   associate_public_ip_address = true
 
   lifecycle {

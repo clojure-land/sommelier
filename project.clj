@@ -4,7 +4,7 @@
 
   :resource-paths ["resources"]
 
-  :sub ["api" "job" "apriori"]
+  :sub ["module/api" "module/job" "module/apriori"]
 
   :profiles {:default [:user]
              :user {:plugins [

@@ -1,71 +1,171 @@
-buildscript {
-    repositories {
-        mavenCentral()
+apply plugin: 'java'
+
+dependencies {
+    compile 'com.googlecode.json-simple:json-simple:1.1.1'
+
+    compile group: 'io.rest-assured', name: 'json-schema-validator', version: '3.0.0'
+
+    testCompile 'io.cucumber:cucumber-java:4.7.1'
+    testCompile 'io.cucumber:cucumber-junit:4.7.1'
+    testCompile 'junit:junit:4.12'
+    testCompile 'io.rest-assured:rest-assured:4.1.1'
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    cucumberRuntime {
+        extendsFrom testRuntime
+    }
+}
+
+sourceSets {
+    test {
+        java {
+            srcDir file('cucumber/java')
+        }
     }
 }
 
 /**
- * Get Date
- * @return
+ * Run cucumber test suite
  */
-def getDate() {
-    def date = new Date()
-    def formattedDate = date.format('yyyyMMdd HHmmssZ')
-    return formattedDate
-}
+task cucumber {
+    dependsOn assemble, compileTestJava
 
-tasks.wrapper {
-    gradleVersion = '5.3'
+    doLast {
+        javaexec {
+            main = "io.cucumber.core.cli.Main"
+            classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
+            args = ['--plugin', 'pretty', '--glue', 'com.sommelier', 'cucumber/resources', '--tags', System.getProperty("tag", "@SmokeTest, @IntegrationTest")]
+            environment 'cucumber.server', "http://localhost:3000"
+        }
+    }
 }
 
 /**
- * Build docker image
+ * Containerize project
  */
-task build {
+task containerize {
     doLast {
-        def deployStream = new ByteArrayOutputStream()
-        def date = getDate()
-
         exec {
-            workingDir './api'
+            workingDir './module/api'
             commandLine 'lein', 'ring', 'uberjar'
         }
 
-        exec {
-            standardOutput = deployStream
-            workingDir '.'
-            commandLine 'git', 'rev-parse', '--short', 'HEAD'
-        }
-
         exec{
-            workingDir './api'
+            workingDir './module/api'
             commandLine 'docker', 'build',
                     '--build-arg', "VERSION=${version}",
-                    '--build-arg', "BUILD_TIME=${date}",
-                    '--build-arg', "GHASH=${deployStream.toString().trim()}",
                     '-t', "sommelier/api:${version}", "."
         }
 
         exec {
-            workingDir './apriori'
+            workingDir './module/apriori'
             commandLine 'lein', 'uberjar'
         }
 
         exec{
-            workingDir './apriori'
+            workingDir './module/apriori'
             commandLine 'docker', 'build',
+                    '--build-arg', "VERSION=${version}",
                     '-t', "sommelier/apriori:${version}", "."
+        }
+
+//        exec {
+//            workingDir './module/job'
+//            commandLine 'lein', 'uberjar'
+//        }
+
+//        exec{
+//            workingDir './module/job'
+//            commandLine 'docker', 'build',
+//                    '--build-arg', "VERSION=${version}",
+//                    '-t', "sommelier/job:${version}", "."
+//        }
+    }
+}
+
+/**
+ * AWS CLI - Pulls down the awscli image.
+ */
+task awscli {
+    doLast {
+        exec {
+            commandLine "docker", "pull", "mesosphere/aws-cli"
+        }
+        exec {
+            commandLine "docker", "tag", "mesosphere/aws-cli", "awscli"
         }
     }
 }
 
 /**
- * Publish
+ * Do Login - Logs into the AWS ECR registry so that Docker can publish to the ECR repository.
  */
-task publish {}
+task doLogin {
+    dependsOn = ["awscli"]
+    doLast {
+        def ecrLogin = new ByteArrayOutputStream()
+        exec {
+            standardOutput = ecrLogin
+            if (deployMode == "local") {
+                commandLine "docker", "run",
+                        "--env-file=${System.getProperty("user.home")}/.aws/${accountId}.env",
+                        "awscli", "ecr", "get-login",
+                        "--no-include-email",
+                        "--region", "${region}"
+            } else {
+                commandLine "docker", "run", "awscli", "ecr", "get-login", "--no-include-email", "--region", "${region}"
+            }
+        }
+        def loginCmd = ecrLogin.toString().reverse().drop(1).reverse().split()
+        exec {
+            commandLine loginCmd
+        }
+    }
+}
 
 /**
- * Deploy
+ * Publish - If you have a slow upload speed you may get this error: net/http: TLS handshake timeout.
+ */
+task publish {
+    dependsOn = ["doLogin"]
+    def ecrContainerName = "${accountId}.dkr.ecr.${region}.amazonaws.com/sommelier-api:${version}"
+
+
+    doLast {
+        exec {
+            commandLine "docker", "tag", "sommelier/api:${version}", ecrContainerName
+        }
+        exec {
+            commandLine "docker", "push", ecrContainerName
+        }
+    }
+
+    doLast {
+        exec {
+            commandLine "docker", "tag", "sommelier/apriori:${version}", ecrContainerName
+        }
+        exec {
+            commandLine "docker", "push", ecrContainerName
+        }
+    }
+
+    doLast {
+        exec {
+            commandLine "docker", "tag", "sommelier/job:${version}", ecrContainerName
+        }
+        exec {
+            commandLine "docker", "push", ecrContainerName
+        }
+    }
+}
+
+/**
+ * Deploy - runs terraform deploy.
  */
 task deploy {}
 
