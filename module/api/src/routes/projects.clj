@@ -10,7 +10,9 @@
 ;; ***** Project implementation ********************************************************
 
 (defn- read-projects
-  "Retrieves projects."
+  "Retrieves projects.
+
+  e.g. (read-projects 'user')"
   [author]
 
   (api-response (->ApiData {:status "ok"} (project->resource-object (get-project {:author author}))) 200 []))

@@ -25,7 +25,7 @@
 
 (defn save-project
   "Inserts or updates a project in mdb."
-  [project-id document]
+  [^org.bson.types.ObjectId project-id document]
 
   (let [db (mg/get-db conn "sommelier")]
     (if (some? project-id)
@@ -34,9 +34,9 @@
         (get-project {:_id (ObjectId. (str project-id))}))
       (vector (mc/insert-and-return db "project" document)))))
 
-(defn remove-project!
+(defn remove-project
   "Permanently removes a project from mdb."
-  [project-id]
+  [^org.bson.types.ObjectId project-id]
 
   (let [conn (mg/connect {:host "mongo" :port 27017})
         db (mg/get-db conn "sommelier")]
@@ -53,7 +53,7 @@
 
 (defn save-job
   "Inserts or updates a job."
-  [job-id document]
+  [^org.bson.types.ObjectId job-id document]
 
   (let [db   (mg/get-db conn "sommelier")]
     (if (some? job-id)
@@ -80,10 +80,11 @@
       (mc/update db "transactions" conditions document {:multi true})
       (mc/insert-batch db "transactions" document))))
 
-;(defn count-transactions [projectId]
-;  (let [conn (mg/connect {:host "mongo" :port 27017})
-;        db (mg/get-db conn (str "job_" projectId))]
-;
-;    (mc/aggregate db "transactions" [{"$group" {:_id "$transaction" :count {"$sum" 1}}}])))
-
 ;; ***** Associations collection ********************************************************
+
+(defn get-associations
+  "Retrieves associations from mdb."
+  [job-id ref]
+
+  (let [db   (mg/get-db conn (str "job_" job-id))]
+    (mc/find-maps db "associations" ref)))

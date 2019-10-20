@@ -14,6 +14,7 @@
             [routes.projects :refer [projects-routes]]
             [routes.project :refer [project-routes]]
             [routes.job :refer [job-routes]]
+            [clojure.tools.trace :as trace-tool]
             [clojure.tools.logging :as log]
             [clj-time.core :as time]
             [monger.core :as mg]
@@ -21,9 +22,21 @@
 
 ;; ***** Api implementation ********************************************************
 
-(schema/set-fn-validation! (empty? (env :disable-schema-validation)))
-
 (def ^:private server-start-time (clj-time.coerce/to-long (time/now)))
+
+(schema/set-fn-validation! (log/enabled? :debug))
+
+(if (log/enabled? :trace)
+  (do
+    (trace-tool/trace-ns routes.jobs)
+    (trace-tool/trace-ns routes.job)
+    (trace-tool/trace-ns routes.projects)
+    (trace-tool/trace-ns routes.project)
+    (trace-tool/trace-ns routes.transactions)
+    (trace-tool/trace-ns util.auth)
+    (trace-tool/trace-ns util.mdb)
+    (trace-tool/trace-ns util.request)
+    (trace-tool/trace-ns util.response)))
 
 (defn- generate-request-id
   "Generate a request identifier."

@@ -2,6 +2,7 @@ apply plugin: 'java'
 
 dependencies {
     compile 'com.googlecode.json-simple:json-simple:1.1.1'
+    compile 'org.mongodb:mongo-java-driver:2.12.3'
 
     compile group: 'io.rest-assured', name: 'json-schema-validator', version: '3.0.0'
 
@@ -39,7 +40,7 @@ task cucumber {
         javaexec {
             main = "io.cucumber.core.cli.Main"
             classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
-            args = ['--plugin', 'pretty', '--glue', 'com.sommelier', 'cucumber/resources', '--tags', System.getProperty("tag", "@SmokeTest, @IntegrationTest")]
+            args = ['--plugin', 'pretty', '--glue', 'com.sommelier', 'cucumber/resources', '--tags', System.getProperty("tag", "@SmokeTest, @IntegrationTest, @AcceptanceTest, @RegressionTest")]
             environment 'cucumber.server', "http://localhost:3000"
         }
     }

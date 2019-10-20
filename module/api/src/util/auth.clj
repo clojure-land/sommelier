@@ -51,7 +51,6 @@
     (catch Exception ex (log/warn *id* (ex-data ex)))))
 
 (defn- unauthorized? [profile]
-
   (cond
     (empty? profile) true
     (and (some? (get profile :exp))

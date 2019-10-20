@@ -1,12 +1,12 @@
 Feature: Projects tests
 
     @IntegrationTest
-    Scenario: get projects
+    Scenario: retrieves projects
         Given the request body is:
         """
         {
           "name": "some project",
-          "description": "a test project",
+          "description": "a test project.",
           "window": 0,
           "min-support": 0,
           "min-confidence": 0

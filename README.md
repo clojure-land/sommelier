@@ -1,5 +1,9 @@
 # Sommelier
 
+* Mine frequent item sets and association rules. 
+* Use the metrics `lift`, `leverage` and `conviction` to find the most interesting associations.
+* Continually monitor your associations at recurring intervals.
+
 ## Requrirments 
 * [Docker](https://www.docker.com/)
 * [Leiningen](https://leiningen.org/)
@@ -37,4 +41,3 @@
 ![design](resources/img/design.jpg)
 
 ## Usage
-

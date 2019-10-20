@@ -6,6 +6,8 @@
 
   :sub ["module/api" "module/job" "module/apriori"]
 
+  :aliases {"test" ["sub" "test"]}
+
   :profiles {:default [:user]
              :user {:plugins [
                                [lein-sub "0.3.0"]

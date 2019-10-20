@@ -13,7 +13,7 @@
 (schema/def ProjectDescription
   (->
     (schema/maybe schema/Str)
-    (schema/constrained #(re-matches #"^[a-zA-Z0-9\s\d]*" %) 'alphanumeric?)
+    (schema/constrained #(re-matches #"^[a-zA-Z0-9\s\d,.!?]*" %) 'alphanumeric?)
     (schema/constrained #(<= 0 (count %) 1000) (list 'length? 0 1000))))
 
 (schema/def Threshold

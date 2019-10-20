@@ -1,23 +1,21 @@
 package com.sommelier;
 
-
+import com.mongodb.MongoClient;
 import io.cucumber.java.Before;
+import io.cucumber.java.After;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.When;
 import io.cucumber.java.en.Then;
 import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 
+
+import java.net.UnknownHostException;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.Optional;
 
 import static io.restassured.RestAssured.given;
+import static org.junit.Assert.*;
 
 public class StepDefinitions
 {
@@ -33,6 +31,16 @@ public class StepDefinitions
     public void before() {
         this.body = null;
         this.attributes.clear();
+    }
+
+    @After
+    public void after() throws UnknownHostException {
+        MongoClient mongoClient = new MongoClient( "localhost");
+        mongoClient.getDatabaseNames().forEach(db -> {
+            if(db.equals("sommelier") || db.contains("job_")) {
+                mongoClient.getDB(db).dropDatabase();
+            }
+        });
     }
 
     @Given("^the request$")
@@ -85,50 +93,20 @@ public class StepDefinitions
         then.statusCode(status);
     }
 
-    @Then("the response body matches schema:")
-    public void the_response_body_matches_schema(String expected) throws ParseException {
-//        then.assertThat().body(JsonSchemaValidator.matchesJsonSchema(schema));
-
-        System.out.println(then.extract().response());
-
-        JSONParser parser = new JSONParser();
-
-        this.validateResponseBody((JSONObject) parser.parse(expected));
+    @Then("the response body attribute {string} = {string}")
+    public void response_body_equals(String path, String expected) {
+        assertEquals(Helper.replacePlaceholders(this.attributes, expected), then.extract().path(path).toString());
     }
 
-    private void validateResponseBody(JSONObject expected) throws ParseException {
-        Iterator entries = expected.entrySet().iterator();
-        while (entries.hasNext()) {
-            Map.Entry entry = (Map.Entry) entries.next();
-            Object key = entry.getKey();
-            Object value = entry.getValue();
+    @Then("start processing job {string}")
+    public void start_job(String string) {
+        // Write code here that turns the phrase above into concrete actions
+//        throw new cucumber.api.PendingException();
+    }
 
-            if(value.getClass().isArray()) {
-
-//                JSONArray c = entry.getJSONArray(value);
-
-//                for (int i = 0 ; i < c.length(); i++) {
-//                    JSONObject obj = c.getJSONObject(i);
-//                    String A = obj.getString("A");
-//                    String B = obj.getString("B");
-//                    String C = obj.getString("C");
-//                    System.out.println(A + " " + B + " " + C);
-//                }
-
-
-                System.out.println("Key = " + key + ", Value = " + value);
-
-
-//            if(expected.get(x).getClass().isArray()){
-//            }
-
-
-//            Object keyvalue = json.get(x);
-//            System.out.println("key: "+ x + " value: " + keyvalue);
-
-            }
-        }
+    @Then("wait {string} seconds")
+    public void wait_seconds(String string) {
+        // Write code here that turns the phrase above into concrete actions
+//        throw new cucumber.api.PendingException();
     }
 }
-
-//System.out.println(

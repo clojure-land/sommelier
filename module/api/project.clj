@@ -7,6 +7,7 @@
                  [org.clojure/math.combinatorics "0.1.4"]
                  [org.clojure/tools.logging "0.4.0"]
                  [org.slf4j/slf4j-log4j12 "1.7.25"]
+                 [org.clojure/tools.trace "0.7.10"]
                  [log4j/log4j "1.2.17" :exclusions [javax.mail/mail
                                                     javax.jms/jms
                                                     com.sun.jmdk/jmxtools
@@ -31,18 +32,21 @@
                  [buddy/buddy-core "1.5.0"]
                  [buddy/buddy-sign "3.0.0"]
                  [com.novemberain/monger "3.5.0"]
-                 ]
+                ]
 
   :ring {:handler handler/app}
 
   :source-paths ["src"]
+  :resource-paths ["resources"]
+  :test-paths ["test"]
 
-  :profiles {:default [:local]
+  :profiles {:default [:user]
              :uberjar {:aot :all}
-             :local   {:plugins [
+             :user   {:plugins [
                                  [lein-ring "0.12.1"]
                                  [lein-kibit "0.1.6"]
-                                ]
-                    }
+                                 [lein-cloverage "1.1.2"]
+                               ]
+                     }
             }
   )

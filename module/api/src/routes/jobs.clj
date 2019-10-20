@@ -12,7 +12,9 @@
 ;; ***** Jobs implementation ********************************************************
 
 (defn- read-jobs
-  "Retrieves jobs."
+  "Retrieves jobs.
+
+  e.g. (read-jobs '5da04bbd9194be00066ac0b8' 'user')"
   [id author]
 
   (if (and (mdb/objectId? id)

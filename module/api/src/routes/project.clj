@@ -13,15 +13,19 @@
 
 ;; ***** Project implementation ********************************************************
 
-(defn- create-project
-  "Creates a new project"
+(defn- create-project-if-not-exists
+  "Creates a new project.
+
+  e.g. (create-project 'user' {:name 'some name', :description '', :window 0, :min-support 0, :min-confidence 0})"
   [author body]
 
   (let [data (project->resource-object (save-project nil (merge body {:author author})))]
     (api-response (->ApiData {:status "created"} data) 201 [{:location (str "/project/" (get (first data) :id))}])))
 
 (defn- read-project
-  "Retrieves a project."
+  "Retrieves a project.
+
+  e.g. (read-project '5da04bbd9194be00066ac0b8')"
   [id author]
 
   (if (objectId? id)
@@ -32,7 +36,9 @@
     (project-not-found id)))
 
 (defn- update-project
-  "Updates an existing project."
+  "Updates an existing project.
+
+  e.g (update-project '5da04b299194be00066ac0b6' 'user' {:name 'some name', :description '', :window 0, :min-support 0, :min-confidence 0})"
   [id author body]
 
   (if (and (objectId? id)
@@ -45,14 +51,16 @@
         (->ApiData {:status "ok"})) 200 [])
     (project-not-found id)))
 
-(defn- delete-project
-  "Deletes an existing project."
+(defn- delete-project!
+  "Deletes an existing project.
+
+  e.g (delete-project '5da04b299194be00066ac0b6' 'user')"
   [id author]
 
   (if (and (objectId? id)
            (not= (get-project {:_id (ObjectId. (str id)) :author author}) []))
     (do
-      (remove-project! (ObjectId. (str id)))
+      (remove-project (ObjectId. (str id)))
       (ring/status nil 204))
     (project-not-found id)))
 
@@ -72,7 +80,7 @@
                   400 {:schema {:meta Meta :errors [ErrorObject]}
                        :description "bad request"}
                   403 {:schema {:meta Meta :errors [ErrorObject]}
-                       :description "unauthorized"}} (create-project "" project))
+                       :description "unauthorized"}} (create-project-if-not-exists "" project))
 
     (context "/:id" []
       (GET "/" []
@@ -117,6 +125,6 @@
                     403 {:schema {:meta Meta :errors [ErrorObject]}
                          :description "unauthorized"}
                     404 {:schema {:meta Meta :errors [ErrorObject]}
-                         :description "not found"}} (delete-project id "")))
+                         :description "not found"}} (delete-project! id "")))
     transactions-routes
     jobs-routes))
