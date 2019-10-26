@@ -3,6 +3,7 @@
     [domain.response :refer :all]
     [util.request :refer :all]
     [util.response :refer :all]
+    [util.mdb :refer :all]
     [compojure.api.sweet :refer :all]
     [ring.util.http-response :as http-response]
     [buddy.core.keys :as keys]
@@ -57,13 +58,24 @@
          (< (get profile :exp) (coerce/to-epoch (local/local-now)))) true
     :else false))
 
-(defn auth! [handler]
+(defmethod compojure.api.meta/restructure-param :current-user
+  [_ binding acc]
+  (update-in acc [:letks] into [binding `(:identity ~'+compojure-api-request+)]))
+
+(defn auth!
+  "Handles authentication."
+  [handler]
+
   (fn [request]
     (let [profile (unsign (parse-header request "Bearer"))]
       (if (unauthorized? profile)
         (api-response (->ApiError {:status "unauthorized"} [{:message "Unauthorized request."}]) 401 [])
         (handler (assoc request :identity profile))))))
 
-(defmethod compojure.api.meta/restructure-param :current-user
-  [_ binding acc]
-  (update-in acc [:letks] into [binding `(:identity ~'+compojure-api-request+)]))
+(defn has-permission?
+  "Does the sub have permission?
+
+  e.g. (has-permission? '' '5da04bbd9194be00066ac0b8' 'project')"
+  [sub id type]
+
+  (true? (some #(= id (str (get % :resource))) (get-permissions sub type))))

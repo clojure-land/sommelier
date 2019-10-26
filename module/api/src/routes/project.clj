@@ -13,52 +13,53 @@
 
 ;; ***** Project implementation ********************************************************
 
-(defn- create-project-if-not-exists
-  "Creates a new project.
+(defn- create-project
+  "Creates a new project, and grants the active user corresponding permission to it.
 
-  e.g. (create-project 'user' {:name 'some name', :description '', :window 0, :min-support 0, :min-confidence 0})"
-  [author body]
+  e.g. (create-project {:sub ''} {:name 'some name', :description '', :window 0, :min-support 0, :min-confidence 0})"
+  [profile body]
 
-  (let [data (project->resource-object (save-project nil (merge body {:author author})))]
-    (api-response (->ApiData {:status "created"} data) 201 [{:location (str "/project/" (get (first data) :id))}])))
+  (let [data (save-project nil body)]
+    (if (true? (insert-permission (get profile :sub) "project" (get (first data) :_id)))
+      (api-response (->ApiData {:status "created"} (project->resource-object data)) 201 [{:location (str "/project/" (get (first data) :_id))}])
+      (forbidden))))
 
 (defn- read-project
-  "Retrieves a project.
+  "Retrieves a project, only if the active user has permission to the project.
 
-  e.g. (read-project '5da04bbd9194be00066ac0b8')"
-  [id author]
+  e.g. (read-project {:sub ''} '5da04bbd9194be00066ac0b8')"
+  [profile id]
 
-  (if (objectId? id)
-    (let [project (get-project {:_id (ObjectId. (str id)) :author author})]
-      (if (not= project [])
+  (if-let [project (get-project-if-exists id)]
+    (if (has-permission? (get profile :sub) id "project")
         (api-response (->ApiData {:status "ok"} (project->resource-object project)) 200 [])
-        (project-not-found id)))
+        (forbidden))
     (project-not-found id)))
 
 (defn- update-project
-  "Updates an existing project.
+  "Updates an existing project, only if the active user has permission to the project.
 
-  e.g (update-project '5da04b299194be00066ac0b6' 'user' {:name 'some name', :description '', :window 0, :min-support 0, :min-confidence 0})"
-  [id author body]
+  e.g (update-project {:sub ''} '5da04b299194be00066ac0b6' {:name 'some name', :description '', :window 0, :min-support 0, :min-confidence 0})"
+  [profile id body]
 
-  (if (and (objectId? id)
-           (not= (get-project {:_id (ObjectId. (str id)) :author author}) []))
-
-    (api-response
-      (->>
-        (save-project id (merge body {:author author}))
-        (project->resource-object)
-        (->ApiData {:status "ok"})) 200 [])
+  (if-let [project (get-project-if-exists id)]
+    (if (has-permission? (get profile :sub) id "project")
+      (api-response (->>
+                      (save-project id body)
+                      (project->resource-object)
+                      (->ApiData {:status "ok"})) 200 [])
+      (forbidden))
     (project-not-found id)))
 
+;todo - Deletes an existing project, removes all associated jobs and revokes all corresponding permissions.
 (defn- delete-project!
   "Deletes an existing project.
 
-  e.g (delete-project '5da04b299194be00066ac0b6' 'user')"
-  [id author]
+  e.g (delete-project '5da04b299194be00066ac0b6')"
+  [id]
 
   (if (and (objectId? id)
-           (not= (get-project {:_id (ObjectId. (str id)) :author author}) []))
+           (not= (get-projects {:_id (ObjectId. (str id))}) []))
     (do
       (remove-project (ObjectId. (str id)))
       (ring/status nil 204))
@@ -73,14 +74,16 @@
       :operationId "createProject"
       :summary "Creates a new project."
       :body [project ProjectSchema]
-      ;:middleware [#(util.auth/auth! %)]
-      ;:current-user profile
-      :responses {201 {:schema {:meta Meta :data (vector (assoc DataObject :attributes ProjectSchema))}
+      :middleware [#(auth! %)]
+      :current-user profile
+      :responses {201 {:schema      {:meta Meta :data (vector (assoc DataObject :attributes ProjectSchema))}
                        :description "created"}
-                  400 {:schema {:meta Meta :errors [ErrorObject]}
+                  400 {:schema      {:meta Meta :errors [ErrorObject]}
                        :description "bad request"}
-                  403 {:schema {:meta Meta :errors [ErrorObject]}
-                       :description "unauthorized"}} (create-project-if-not-exists "" project))
+                  401 {:schema      {:meta Meta :errors [ErrorObject]}
+                       :description "unauthorized"}
+                  403 {:schema      {:meta Meta :errors [ErrorObject]}
+                       :description "forbidden"}} (create-project profile project))
 
     (context "/:id" []
       (GET "/" []
@@ -88,14 +91,16 @@
         :operationId "getProject"
         :summary "Retrieves a project."
         :path-params [id :- ProjectId]
-        ;:middleware [#(util.auth/auth! %)]
-        ;:current-user profile
-        :responses {200 {:schema {:meta Meta :data (vector (assoc DataObject :attributes ProjectSchema))}
+        :middleware [#(auth! %)]
+        :current-user profile
+        :responses {200 {:schema      {:meta Meta :data (vector (assoc DataObject :attributes ProjectSchema))}
                          :description "ok"}
-                    403 {:schema {:meta Meta :errors [ErrorObject]}
+                    401 {:schema      {:meta Meta :errors [ErrorObject]}
                          :description "unauthorized"}
-                    404 {:schema {:meta Meta :errors [ErrorObject]}
-                         :description "not found"}} (read-project id ""))
+                    403 {:schema      {:meta Meta :errors [ErrorObject]}
+                         :description "forbidden"}
+                    404 {:schema      {:meta Meta :errors [ErrorObject]}
+                         :description "not found"}} (read-project profile id))
 
       (POST "/" []
         :tags ["project"]
@@ -103,28 +108,32 @@
         :summary "Updates an existing project."
         :body [project ProjectSchema]
         :path-params [id :- ProjectId]
-        ;:middleware [#(util.auth/auth! %)]
-        ;:current-user profile
-        :responses {200 {:schema {:meta Meta :data (vector (assoc DataObject :attributes ProjectSchema))}
+        :middleware [#(auth! %)]
+        :current-user profile
+        :responses {200 {:schema      {:meta Meta :data (vector (assoc DataObject :attributes ProjectSchema))}
                          :description "ok"}
-                    400 {:schema {:meta Meta :errors [ErrorObject]}
+                    400 {:schema      {:meta Meta :errors [ErrorObject]}
                          :description "bad request"}
-                    403 {:schema {:meta Meta :errors [ErrorObject]}
+                    401 {:schema      {:meta Meta :errors [ErrorObject]}
                          :description "unauthorized"}
-                    404 {:schema {:meta Meta :errors [ErrorObject]}
-                         :description "not found"}} (update-project id "" project))
+                    403 {:schema      {:meta Meta :errors [ErrorObject]}
+                         :description "forbidden"}
+                    404 {:schema      {:meta Meta :errors [ErrorObject]}
+                         :description "not found"}} (update-project profile id project))
 
       (DELETE "/" []
         :tags ["project"]
         :operationId "deleteProject"
         :summary "Deletes an existing project."
         :path-params [id :- ProjectId]
-        ;:middleware [#(util.auth/auth! %)]
-        ;:current-user profile
+        :middleware [#(auth! %)]
+        :current-user profile
         :responses {204 {:description "no content"}
-                    403 {:schema {:meta Meta :errors [ErrorObject]}
+                    401 {:schema      {:meta Meta :errors [ErrorObject]}
                          :description "unauthorized"}
-                    404 {:schema {:meta Meta :errors [ErrorObject]}
-                         :description "not found"}} (delete-project! id "")))
+                    403 {:schema      {:meta Meta :errors [ErrorObject]}
+                         :description "forbidden"}
+                    404 {:schema      {:meta Meta :errors [ErrorObject]}
+                         :description "not found"}} (delete-project! id)))
     transactions-routes
     jobs-routes))

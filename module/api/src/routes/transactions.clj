@@ -64,7 +64,7 @@
   e.g. (get-scheduled-job '18cc8865-0868-42ba-8668-0821e976e3b9')"
   [project-id]
 
-  (let [job (mdb/get-job {:project-id (ObjectId. (str project-id)) :state "scheduled"})]
+  (let [job (mdb/get-jobs {:project-id (ObjectId. (str project-id)) :state "scheduled"})]
     (if (= job [])
       (mdb/save-job nil {:project-id (ObjectId. (str project-id)) :state "scheduled" :transactions 0})
       (first job))))
@@ -92,10 +92,10 @@
   "Inserts or updates frequency of transactions.
 
   e.g. (save-transactions-freq '5d9f562a0e8e3d00066e6ab8' 'user' {:transactions [['a' 'b' 'c']]})"
-  [project-id author body]
+  [project-id body]
 
   (if (and (mdb/objectId? project-id)
-           (not= (mdb/get-project {:_id (ObjectId. (str project-id)) :author author}) []))
+           (not= (mdb/get-projects {:_id (ObjectId. (str project-id))}) []))
 
     (let [job (scheduled-job! project-id)
           transactions (->>
@@ -134,4 +134,4 @@
                 403 {:schema {:meta Meta :errors [ErrorObject]}
                      :description "unauthorized"}
                 404 {:schema {:meta Meta :errors [ErrorObject]}
-                     :description "not found"}} (save-transactions-freq id "" transactions)))
+                     :description "not found"}} (save-transactions-freq id transactions)))

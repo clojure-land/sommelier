@@ -15,10 +15,16 @@
               (api-response body code []) headers)
       (ring/status (ring/response (Get body)) code))))
 
+(defn forbidden
+  "Returns a 403 ring response."
+  []
+
+  (api-response (->ApiError {:status "forbidden"} [{:message "Permission denied."}]) 403 []))
+
 ;; ***** Project implementation ********************************************************
 
 (defn project->resource-object
-  "Transforms a project into a resource object."
+  "Transforms project into a resource object."
   [projects]
 
   (map (fn [row]
@@ -27,7 +33,7 @@
           :attributes (dissoc row :_id :author)}) projects))
 
 (defn project-not-found
-  "Returns a 404 Ring response."
+  "Returns a 404 ring response."
   [id]
 
   (api-response (->ApiError {:status "not found"} [{:message (str "No project found for id: " id)}]) 404 []))
@@ -35,12 +41,27 @@
 ;; ***** Job implementation ********************************************************
 
 (defn job->resource-object
-  "Transforms a job into a resource object."
+  "Transforms job into a resource object."
   [jobs]
 
   (map (fn [row]
-         (prn row)
-
          {:type       "job"
           :id         (str (get row :_id))
           :attributes (update  (dissoc row :_id) :project-id str)}) jobs))
+
+(defn job-not-found
+  "Returns a 404 ring response."
+  [id]
+
+  (api-response (->ApiError {:status "not found"} [{:message (str "No job found for id: " id)}]) 404 []))
+
+;; ***** Association implementation ********************************************************
+
+(defn association->resource-object
+  "Transforms association into a resource object."
+  [associations]
+
+  (map (fn [row]
+         {:type       "association"
+          :id         (str (get row :_id))
+          :attributes (dissoc row :_id)}) associations))

@@ -10,12 +10,15 @@
 ;; ***** Project implementation ********************************************************
 
 (defn- read-projects
-  "Retrieves projects.
+  "Retrieves all projects the active user has permission to access.
 
-  e.g. (read-projects 'user')"
-  [author]
+  e.g. (read-projects {:sub ''})"
+  [profile]
 
-  (api-response (->ApiData {:status "ok"} (project->resource-object (get-project {:author author}))) 200 []))
+  (api-response (->>
+                  (get-projects {:_id {"$in" (map #(get % :resource) (get-permissions (get profile :sub) "project"))}})
+                  (project->resource-object)
+                  (->ApiData {:status "ok"})) 200 []))
 
 ;; ***** Projects definition *******************************************************
 
@@ -25,10 +28,9 @@
       :tags ["projects"]
       :operationId "getProjects"
       :summary "Retrieves projects."
-      ;:middleware [#(util.auth/auth! %)]
-      ;:current-user profile
+      :middleware [#(auth! %)]
+      :current-user profile
       :responses {200 {:schema {:meta Meta :data (vector (assoc DataObject :attributes ProjectSchema))}
                        :description "ok"}
                   403 {:schema {:meta Meta :errors [ErrorObject]}
-                       :description "unauthorized"}} (read-projects ""))))
-
+                       :description "unauthorized"}} (read-projects profile))))
