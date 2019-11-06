@@ -1,5 +1,4 @@
-# Sommelier
-![Hooch](./resources/img/sommelier.png)
+![Sommelier](./resources/img/sommelier.png)
 
 * Mine frequent item sets and association rules. 
 * Use the metrics `lift`, `leverage` and `conviction` to find the most interesting associations.
