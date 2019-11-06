@@ -1,5 +1,6 @@
 ![Sommelier](./resources/img/sommelier.png)
 
+## About
 * Mine frequent item sets and association rules. 
 * Use the metrics `lift`, `leverage` and `conviction` to find the most interesting associations.
 * Continually monitor your associations at recurring intervals.
