@@ -9,9 +9,9 @@ import io.cucumber.java.en.Then;
 import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
 
-
 import java.net.UnknownHostException;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static io.restassured.RestAssured.given;
@@ -19,17 +19,21 @@ import static org.junit.Assert.*;
 
 public class StepDefinitions
 {
+    private static final String TOKEN = Helper.RequestToken();
     private static final String CONTENT_TYPE = "application/json";
 
     private RequestSpecification when;
     private ValidatableResponse then;
 
     private String body;
+    private Map<String, String> headers = new HashMap<>();
     private HashMap<String, Object> attributes = new HashMap<>();
+
 
     @Before
     public void before() {
         this.body = null;
+        this.headers.clear();
         this.attributes.clear();
     }
 
@@ -55,10 +59,17 @@ public class StepDefinitions
         this.body = body;
     }
 
+    @Given("the {string} header is {string}")
+    public void the_header_is(String header, String value) {
+        this.attributes.put(":token", TOKEN);
+        this.headers.put(header, Helper.replacePlaceholders(this.attributes, value));
+    }
+
     @When("I request {string} using HTTP GET")
     public void i_request_using_HTTP_GET(String uri) {
         then = given()
                 .contentType(CONTENT_TYPE)
+                .headers(this.headers)
                 .when()
                 .get(Helper.replacePlaceholders(this.attributes, uri))
                 .then();
@@ -68,6 +79,7 @@ public class StepDefinitions
     public void i_request_using_HTTP_POST(String uri) {
         then = given()
                 .contentType(CONTENT_TYPE)
+                .headers(this.headers)
                 .body(this.body)
                 .when()
                 .post(Helper.replacePlaceholders(this.attributes, uri))
@@ -78,6 +90,7 @@ public class StepDefinitions
     public void i_request_using_HTTP_DELETE(String uri) {
         then = given()
                 .contentType(CONTENT_TYPE)
+                .headers(this.headers)
                 .when()
                 .delete(Helper.replacePlaceholders(this.attributes, uri))
                 .then();
@@ -96,17 +109,5 @@ public class StepDefinitions
     @Then("the response body attribute {string} = {string}")
     public void response_body_equals(String path, String expected) {
         assertEquals(Helper.replacePlaceholders(this.attributes, expected), then.extract().path(path).toString());
-    }
-
-    @Then("start processing job {string}")
-    public void start_job(String string) {
-        // Write code here that turns the phrase above into concrete actions
-//        throw new cucumber.api.PendingException();
-    }
-
-    @Then("wait {string} seconds")
-    public void wait_seconds(String string) {
-        // Write code here that turns the phrase above into concrete actions
-//        throw new cucumber.api.PendingException();
     }
 }

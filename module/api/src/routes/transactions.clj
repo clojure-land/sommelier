@@ -6,115 +6,52 @@
             [domain.response :refer :all]
             [domain.project :refer :all]
             [domain.transactions :refer :all]
-            [domain.job :refer :all]
-            [monger.json]
-            [clojure.core.matrix :refer :all]
-            [clojure.math.combinatorics :as combo])
+            [domain.task :refer :all]
+            [cheshire.core :as json]
+            [amazonica.aws.sqs :as sqs]
+            [monger.json])
   (:import [org.bson.types ObjectId]))
 
 ;; ***** Transactions implementation ********************************************************
 
-(defn- matrix-concat
-  "Concatenates each coll in matrix.
+(def queue
+  "http://localstack:4576/queue/sommelier-event")
 
-  e.g. (matrix-concat [[1 2 3] [4 5 6]])"
-  [matrix]
+(defn- scheduled-task!
+  "Retrieves the scheduled task, if none exists then creates a new one.
 
-  (if (matrix? matrix)
-    (map (fn [coll] (clojure.string/join "," coll)) matrix) []))
-
-(defn- matrix-subsets
-  "Returns subsets of each coll in matrix.
-
-   e.g. (matrix-subsets [[1 2 3] [4 5 6]])"
-  [matrix]
-
-  (if (matrix? matrix)
-    (apply concat (map (fn [coll] (combo/subsets coll)) matrix)) []))
-
-(defn- group-by-val
-  "Groups keys by value.
-
-  e.g (group-by-val {:key 1})"
-  [coll]
-
-  (if (coll? coll)
-    (reduce (fn [grouped item]
-              (->>
-                (key item)
-                (conj (get grouped (val item)))
-                (assoc grouped (val item)))) {} coll) {}))
-
-(defn- group-transactions-by-operation
-  "Groups transaction frequencies by insert or update operation.
-
-  e.g. (group-by-operation #object[org.bson.types.ObjectId 0x9359d8f '5da049fb9194be00066ac076'] {'a' 1})"
-  [^org.bson.types.ObjectId job-id transaction-freq]
-
-  (let [transactions (mdb/get-transactions job-id {:transaction {"$in" (keys transaction-freq)}})]
-    (reduce (fn [group freq]
-              (let [transaction (first (filter #(= (get % :transaction) (key freq)) transactions))]
-                (if (empty? transaction)
-                  (assoc-in group [:insert (key freq)] (val freq))
-                  (assoc-in group [:update (get transaction :_id)] (val freq))))) {:insert {} :update {}} transaction-freq)))
-
-(defn- scheduled-job!
-  "Retrieves the scheduled job, if none exists then creates a new one.
-
-  e.g. (get-scheduled-job '18cc8865-0868-42ba-8668-0821e976e3b9')"
+  e.g. (get-scheduled-task '18cc8865-0868-42ba-8668-0821e976e3b9')"
   [project-id]
 
-  (let [job (mdb/get-jobs {:project-id (ObjectId. (str project-id)) :state "scheduled"})]
-    (if (= job [])
-      (mdb/save-job nil {:project-id (ObjectId. (str project-id)) :state "scheduled" :transactions 0})
-      (first job))))
-
-(defn- update-transactions-freq
-  "Updates frequency of transactions.
-
-  e.g (update-transactions-freq #object[org.bson.types.ObjectId 0x76e5c85d '5d9f562b0e8e3d00066e6ab9'] {#object[org.bson.types.ObjectId 0x30af87ef '5da049fb9194be00066ac077'] 2})"
-  [^org.bson.types.ObjectId job-id update-transactions]
-
-  (if (not (empty? update-transactions))
-    (doseq [row (group-by-val update-transactions)]
-      (mdb/save-transactions job-id {:_id {"$in" (val row)}} {"$inc" {:count (key row)}}))))
-
-(defn- insert-transactions-freq
-  "Inserts frequency of transactions.
-
-  e.g. (insert-transactions-freq #object[org.bson.types.ObjectId 0x76e5c85d '5d9f562b0e8e3d00066e6ab9'] {'a' 1, 'b' 3, 'c' 7})"
-  [^org.bson.types.ObjectId job-id insert-transactions]
-
-  (if (not (empty? insert-transactions))
-    (mdb/save-transactions job-id nil (map (fn [row] {:transaction (key row) :count (val row)}) insert-transactions))))
+  (let [task (mdb/get-tasks {:project-id (ObjectId. (str project-id)) :state "scheduled"})]
+    (if (= task [])
+      (mdb/save-task nil {:project-id (ObjectId. (str project-id)) :state "scheduled" :transactions 0})
+      (first task))))
 
 (defn- save-transactions-freq
   "Inserts or updates frequency of transactions.
 
-  e.g. (save-transactions-freq '5d9f562a0e8e3d00066e6ab8' 'user' {:transactions [['a' 'b' 'c']]})"
-  [project-id body]
+  e.g. (save-transactions-freq {:sub ''} '5d9f562a0e8e3d00066e6ab8' {:transactions [['a' 'b' 'c']]})"
+  [profile id body]
 
-  (if (and (mdb/objectId? project-id)
-           (not= (mdb/get-projects {:_id (ObjectId. (str project-id))}) []))
+  (if-let [project (mdb/get-project-if-exists id)]
+    ; todo: check if project is archived.
+    (if (has-permission? (get profile :sub) id "project")
+      (let [task (scheduled-task! id)]
+        (doseq [transaction (frequencies (partition 1 (get body :transactions)))]
+              (sqs/send-message queue (json/encode {:type "transaction"
+                                                    :project-id (get task :project-id)
+                                                    :task-id (get task :_id)
+                                                    :transaction (first (key transaction))
+                                                    :count (val transaction)})))
 
-    (let [job (scheduled-job! project-id)
-          transactions (->>
-                         (get body :transactions)
-                         (matrix-subsets)
-                         (matrix-concat)
-                         (frequencies)
-                         (group-transactions-by-operation (get job :_id)))]
-
-      (update-transactions-freq (get job :_id) (get transactions :update))
-      (insert-transactions-freq (get job :_id) (get transactions :insert))
-
-      (api-response
-        (->>
-          (mdb/save-job (get job :_id) {"$inc" {:transactions (count (get body :transactions))}})
-          (job->resource-object)
-          (->ApiData {:status "accepted"}))
-        202 [{:content-location (str "/v1/job/" (get job :_id))}]))
-  (project-not-found project-id)))
+        (api-response (->>
+                        (update task :transactions + (count (get body :transactions)))
+                        (vector)
+                        (task->resource-object)
+                        (->ApiData {:status "accepted"})) 202 [{:content-location (str "/v1/task/" (get task :_id))}]))
+      (forbidden))
+  (project-not-found id)))
 
 ;; ***** Transactions definition *******************************************************
 
@@ -123,15 +60,17 @@
     :path-params [id :- ProjectId]
     :tags ["project"]
     :operationId "appendTransactions"
-    :summary "Appends transactions for processing."
+    :summary "Appends transactions to a new or existing scheduled task."
     :body [transactions TransactionsSchema]
-    ;:middleware [#(util.auth/auth! %)]
-    ;:current-user profile
-    :responses {202 {:schema {:meta Meta :data (vector (assoc DataObject :attributes JobSchema))}
+    :middleware [#(auth! %)]
+    :current-user profile
+    :responses {202 {:schema {:meta Meta :data (vector (assoc DataObject :attributes TaskSchema))}
                      :description "accepted"}
                 400 {:schema {:meta Meta :errors [ErrorObject]}
                      :description "bad request"}
-                403 {:schema {:meta Meta :errors [ErrorObject]}
+                401 {:schema {:meta Meta :errors [ErrorObject]}
                      :description "unauthorized"}
+                403 {:schema {:meta Meta :errors [ErrorObject]}
+                     :description "forbidden"}
                 404 {:schema {:meta Meta :errors [ErrorObject]}
-                     :description "not found"}} (save-transactions-freq id transactions)))
+                     :description "not found"}} (save-transactions-freq profile id transactions)))

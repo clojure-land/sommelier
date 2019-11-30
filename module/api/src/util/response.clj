@@ -38,22 +38,22 @@
 
   (api-response (->ApiError {:status "not found"} [{:message (str "No project found for id: " id)}]) 404 []))
 
-;; ***** Job implementation ********************************************************
+;; ***** Task implementation ********************************************************
 
-(defn job->resource-object
-  "Transforms job into a resource object."
-  [jobs]
+(defn task->resource-object
+  "Transforms task into a resource object."
+  [tasks]
 
   (map (fn [row]
-         {:type       "job"
+         {:type       "task"
           :id         (str (get row :_id))
-          :attributes (update  (dissoc row :_id) :project-id str)}) jobs))
+          :attributes (update (dissoc row :_id) :project-id str)}) tasks))
 
-(defn job-not-found
+(defn task-not-found
   "Returns a 404 ring response."
   [id]
 
-  (api-response (->ApiError {:status "not found"} [{:message (str "No job found for id: " id)}]) 404 []))
+  (api-response (->ApiError {:status "not found"} [{:message (str "No task found for id: " id)}]) 404 []))
 
 ;; ***** Association implementation ********************************************************
 

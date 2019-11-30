@@ -8,7 +8,7 @@
             [monger.json]
             [ring.util.response :as ring]
             [routes.transactions :refer [transactions-routes]]
-            [routes.jobs :refer [jobs-routes]])
+            [routes.tasks :refer [tasks-routes]])
   (:import [org.bson.types ObjectId]))
 
 ;; ***** Project implementation ********************************************************
@@ -51,18 +51,19 @@
       (forbidden))
     (project-not-found id)))
 
-;todo - Deletes an existing project, removes all associated jobs and revokes all corresponding permissions.
+;todo - Deletes an existing project, removes all associated tasks and revokes all corresponding permissions.
 (defn- delete-project!
   "Deletes an existing project.
 
-  e.g (delete-project '5da04b299194be00066ac0b6')"
-  [id]
+  e.g (delete-project {:sub ''} '5da04b299194be00066ac0b6')"
+  [profile id]
 
-  (if (and (objectId? id)
-           (not= (get-projects {:_id (ObjectId. (str id))}) []))
-    (do
-      (remove-project (ObjectId. (str id)))
-      (ring/status nil 204))
+  (if-let [project (get-project-if-exists id)]
+    (if (has-permission? (get profile :sub) id "project")
+      (do
+        (remove-project (ObjectId. (str id)))
+        (ring/status nil 204))
+      (forbidden))
     (project-not-found id)))
 
 ;; ***** Project definition *******************************************************
@@ -134,6 +135,6 @@
                     403 {:schema      {:meta Meta :errors [ErrorObject]}
                          :description "forbidden"}
                     404 {:schema      {:meta Meta :errors [ErrorObject]}
-                         :description "not found"}} (delete-project! id)))
+                         :description "not found"}} (delete-project! profile id)))
     transactions-routes
-    jobs-routes))
+    tasks-routes))

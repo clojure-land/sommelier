@@ -32,6 +32,7 @@
                  [buddy/buddy-core "1.5.0"]
                  [buddy/buddy-sign "3.0.0"]
                  [com.novemberain/monger "3.5.0"]
+                 [amazonica "0.3.145"]
                 ]
 
   :ring {:handler handler/app}

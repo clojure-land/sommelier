@@ -13,6 +13,7 @@ Feature: Apriori tests
           "min-confidence": 0.2
         }
         """
+        And the "Authorization" header is "Bearer :token"
         When I request "/v1/project" using HTTP POST
         Then extract "data[0].id" as placeholder ":projectId"
         Given the request body is:
@@ -28,8 +29,8 @@ Feature: Apriori tests
           ]
         }
         """
+        And the "Authorization" header is "Bearer :token"
         When I request "/v1/project/:projectId/transactions" using HTTP POST
         Then extract "data[0].id" as placeholder ":jobId"
-        Then start processing job ":jobId"
-        Then wait "10" seconds
-
+#        Then start processing job ":jobId"
+#        Then wait "10" seconds

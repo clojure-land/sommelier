@@ -6,6 +6,7 @@ dependencies {
 
     compile group: 'io.rest-assured', name: 'json-schema-validator', version: '3.0.0'
 
+    testCompile 'com.auth0:auth0:1.14.3'
     testCompile 'io.cucumber:cucumber-java:4.7.1'
     testCompile 'io.cucumber:cucumber-junit:4.7.1'
     testCompile 'junit:junit:4.12'
@@ -40,8 +41,14 @@ task cucumber {
         javaexec {
             main = "io.cucumber.core.cli.Main"
             classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
-            args = ['--plugin', 'pretty', '--glue', 'com.sommelier', 'cucumber/resources', '--tags', System.getProperty("tag", "@SmokeTest, @IntegrationTest, @AcceptanceTest, @RegressionTest")]
+            args = ['--plugin', 'pretty', '--glue', 'com.sommelier', 'cucumber/resources', '--tags', System.getProperty("tag", "@SmokeTest, @IntegrationTest, @AcceptanceTest")]
             environment 'cucumber.server', "http://localhost:3000"
+
+            // retrieve and set environment variables
+            file('auth.env').readLines().each() {
+                def (key, value) = it.tokenize('=')
+                environment key, value
+            }
         }
     }
 }
@@ -75,17 +82,17 @@ task containerize {
                     '-t', "sommelier/apriori:${version}", "."
         }
 
-//        exec {
-//            workingDir './module/job'
-//            commandLine 'lein', 'uberjar'
-//        }
+        exec {
+            workingDir './module/event'
+            commandLine 'lein', 'uberjar'
+        }
 
-//        exec{
-//            workingDir './module/job'
-//            commandLine 'docker', 'build',
-//                    '--build-arg', "VERSION=${version}",
-//                    '-t', "sommelier/job:${version}", "."
-//        }
+        exec{
+            workingDir './module/event'
+            commandLine 'docker', 'build',
+                    '--build-arg', "VERSION=${version}",
+                    '-t', "sommelier/event:${version}", "."
+        }
     }
 }
 
@@ -136,7 +143,6 @@ task publish {
     dependsOn = ["doLogin"]
     def ecrContainerName = "${accountId}.dkr.ecr.${region}.amazonaws.com/sommelier-api:${version}"
 
-
     doLast {
         exec {
             commandLine "docker", "tag", "sommelier/api:${version}", ecrContainerName
@@ -157,7 +163,7 @@ task publish {
 
     doLast {
         exec {
-            commandLine "docker", "tag", "sommelier/job:${version}", ecrContainerName
+            commandLine "docker", "tag", "sommelier/task:${version}", ecrContainerName
         }
         exec {
             commandLine "docker", "push", ecrContainerName

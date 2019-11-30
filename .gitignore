@@ -8,7 +8,7 @@ pom.xml.asc
 *.jar
 *.class
 *.iml
-/.idea
+.idea
 /.lein-*
 /.nrepl-port
 .hgignore

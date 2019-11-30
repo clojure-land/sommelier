@@ -9,24 +9,42 @@ services:
     networks:
       - sommelier
     ports:
-    - 3000:3000
-    env_file:
-    - auth.env
-    restart: on-failure:3
-
-  apriori:
-    image: sommelier/apriori:latest
-    command: run
-    depends_on:
-      - localstack
-      - awscli
-    networks:
-      - sommelier
+      - 3000:3000
     environment:
       - AWS_ACCESS_KEY_ID=111
       - AWS_SECRET_ACCESS_KEY=111
       - AWS_REGION=us-east-1
+    env_file:
+      - auth.env
     restart: on-failure:3
+
+#  apriori:
+#    image: sommelier/apriori:latest
+#    command: run
+#    depends_on:
+#      - localstack
+#      - awscli
+#    networks:
+#      - sommelier
+#    environment:
+#      - AWS_ACCESS_KEY_ID=111
+#      - AWS_SECRET_ACCESS_KEY=111
+#      - AWS_REGION=us-east-1
+#    restart: on-failure:5
+
+#  event:
+#    image: sommelier/event:latest
+#    command: run
+#    depends_on:
+#      - localstack
+#      - awscli
+#    networks:
+#      - sommelier
+#    environment:
+#      - AWS_ACCESS_KEY_ID=111
+#      - AWS_SECRET_ACCESS_KEY=111
+#      - AWS_REGION=us-east-1
+#    restart: on-failure:5
 
   mongo:
     image: mongo:latest

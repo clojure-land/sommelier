@@ -32,5 +32,7 @@
       :current-user profile
       :responses {200 {:schema {:meta Meta :data (vector (assoc DataObject :attributes ProjectSchema))}
                        :description "ok"}
+                  401 {:schema {:meta Meta :errors [ErrorObject]}
+                       :description "unauthorized"}
                   403 {:schema {:meta Meta :errors [ErrorObject]}
-                       :description "unauthorized"}} (read-projects profile))))
+                       :description "forbidden"}} (read-projects profile))))

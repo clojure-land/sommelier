@@ -12,7 +12,14 @@
   (:gen-class))
 
 (def queue
-  "http://localstack:4576/queue/sommelier-apriori")
+  "http://localhost:4576/queue/sommelier-apriori")
+
+(def max-threads 10)
+
+(def lock (atom 0))
+
+(def batch-size
+  1000)
 
 (def min-support
   0.3)
@@ -21,7 +28,7 @@
   0.3)
 
 (def conn
-  (mg/connect {:host "mongo" :port 27017}))
+  (mg/connect {:host "localhost" :port 27017}))
 
 (defn- transactions->frequencies [transactions]
   (reduce (fn [coll row]
@@ -48,7 +55,7 @@
   (let [db (mg/get-db conn db-name)]
 
   (mq/with-collection db "transactions"
-    (mq/paginate :page page :per-page 1000))))
+    (mq/paginate :page page :per-page batch-size))))
 
 (defn- fetch-transactions-in-coll
   "Retrieves transactions in coll."
@@ -65,8 +72,9 @@
   "Inserts rules into mongodb."
   [db-name rules]
 
-  (let [db (mg/get-db conn db-name)]
-    (log/info {:insert-rules (acknowledged? (mc/insert-batch db "rules" rules))})))
+  (if (not-empty rules)
+    (let [db (mg/get-db conn db-name)]
+      (log/info {:insert-rules (acknowledged? (mc/insert-batch db "rules" rules))}))))
 
 (defn- support
   "Indicates how frequently the item set appears in the data set.
@@ -162,10 +170,10 @@
               (println x)))
 
 (defn- apriori
-  "Runs apriori for specified job batch."
-  [job-id transactions-total page]
+  "Runs apriori for specified task batch."
+  [task-id transactions-total page]
 
-  (let [db-name (str "job_" job-id)
+  (let [db-name (str "task_" task-id)
         transactions (fetch-transactions db-name page)
         antecedents (transactions->antecedents transactions)
         consequents (transactions->consequents transactions)]
@@ -180,16 +188,15 @@
         (support transactions-total)
         (generate-rules antecedents consequents)
 
+        ; prune all rules which don't meet min-support or min-confidence
         (filter #(and (not (nil? (get % :support))) (>= (get % :support) min-support)))
         (filter #(and (not (nil? (get % :confidence))) (>= (get % :confidence) min-confidence)))
 
-        (save-rules db-name))))
+        (print-rules)
 
-(defn processed!
-  "Removes message from queue."
-  [msg]
+        ;(save-rules db-name)
 
-  (sqs/delete-message (assoc msg :queue-url queue)))
+        )))
 
 (defn process-message
   "Processes queued message."
@@ -198,17 +205,21 @@
   (try
     (let [body (json/decode (msg :body) true)]
       (log/info body)
-      (apriori (body :job-id)
+      (apriori (body :task-id)
                (body :transactions-total)
                (body :page))
 
-      (processed! msg))
+      (sqs/delete-message (assoc msg :queue-url queue)))
     (catch Exception e (prn e))))
 
 (defn -main []
   (while true
-    (let [messages (sqs/receive-message :queue-url queue
-                                        :max-number-of-messages 10)]
-      (doseq [msg (get messages :messages)]
-        (future (process-message msg))))
-    (Thread/sleep 20000)))
+    (log/info "Running" @lock "of" max-threads "threads.")
+    (if (and (< (deref lock) max-threads) (> (- max-threads @lock) 0))
+      (let [messages (sqs/receive-message :queue-url queue :max-number-of-messages (- max-threads @lock))]
+        (doseq [msg (get messages :messages)]
+          (future (swap! lock inc)
+                  (process-message msg)
+                  (swap! lock dec))))
+      (log/info "Waiting for free thread slot to become available."))
+    (Thread/sleep 10000)))

@@ -13,7 +13,7 @@
             [environ.core :refer [env]]
             [routes.projects :refer [projects-routes]]
             [routes.project :refer [project-routes]]
-            [routes.job :refer [job-routes]]
+            [routes.task :refer [task-routes]]
             [clojure.tools.trace :as trace-tool]
             [clojure.tools.logging :as log]
             [clj-time.core :as time]
@@ -28,8 +28,8 @@
 
 (if (log/enabled? :trace)
   (do
-    (trace-tool/trace-ns routes.jobs)
-    (trace-tool/trace-ns routes.job)
+    (trace-tool/trace-ns routes.tasks)
+    (trace-tool/trace-ns routes.task)
     (trace-tool/trace-ns routes.projects)
     (trace-tool/trace-ns routes.project)
     (trace-tool/trace-ns routes.transactions)
@@ -129,11 +129,12 @@
             :middleware [#(util.auth/auth! %)]
             :current-user session
             :responses {200 {:description "ok"}
-                        403 {:description "unauthorized"}} (current-session session))
+                        401 {:description "unauthorized"}
+                        403 {:description "forbidden"}} (current-session session))
 
           projects-routes
           project-routes
-          job-routes)
+          task-routes)
 
         (undocumented
           (route/not-found
@@ -141,3 +142,22 @@
 
       {:exceptions false
        :printer    :messages})))
+
+; GET    /projects
+
+; POST   /project
+; POST   /project/:id
+; GET    /project/:id
+; DELETE /project/:id
+; POST   /project/:id/transactions
+; GET    /project/:id/tasks?latest=true|false&id={objectId}
+
+; GET    /task/:id
+; DELETE /task/:id
+; GET    /task/:id/associations
+; GET    /task/:id/frequencies
+; POST   /task/:id/action -> run
+
+; subset(2 2)
+; [a b c] -> [a b][b c]
+;

@@ -72,40 +72,40 @@
         db (mg/get-db conn "sommelier")]
     (mc/remove-by-id db "project" id)))
 
-;; ***** Job collection ********************************************************
+;; ***** Task collection ********************************************************
 
-(defn get-jobs
-  "Retrieves jobs from mdb."
+(defn get-tasks
+  "Retrieves tasks from mdb."
   [ref]
 
   (let [db (mg/get-db conn "sommelier")]
-    (mc/find-maps db "job" ref)))
+    (mc/find-maps db "task" ref)))
 
-(defn save-job
-  "Inserts or updates a job."
+(defn save-task
+  "Inserts or updates a task."
   [^org.bson.types.ObjectId id document]
 
   (let [db   (mg/get-db conn "sommelier")]
     (if (some? id)
       (do
-        (mc/update-by-id db "job" (ObjectId. (str id)) document)
-        (get-jobs {:_id (ObjectId. (str id))}))
-      (mc/insert-and-return db "job" document))))
+        (mc/update-by-id db "task" (ObjectId. (str id)) document)
+        (get-tasks {:_id (ObjectId. (str id))}))
+      (mc/insert-and-return db "task" document))))
 
 ;; ***** Transactions collection ********************************************************
 
 (defn get-transactions
   "Retrieves transactions from mdb."
-  [job-id ref]
+  [task-id ref]
 
-  (let [db   (mg/get-db conn (str "job_" job-id))]
+  (let [db   (mg/get-db conn (str "task_" task-id))]
     (mc/find-maps db "transactions" ref)))
 
 (defn save-transactions
   "Inserts or updates transactions in mdb."
-  [job-id conditions document]
+  [task-id conditions document]
 
-  (let [db (mg/get-db conn (str "job_" job-id))]
+  (let [db (mg/get-db conn (str "task_" task-id))]
     (if (some? conditions)
       (mc/update db "transactions" conditions document {:multi true})
       (mc/insert-batch db "transactions" document))))
@@ -114,9 +114,9 @@
 
 (defn get-association-rules
   "Retrieves associations from mdb."
-  [job-id page sort-by order ref]
+  [task-id page sort-by order ref]
 
-  (let [db (mg/get-db conn (str "job_" job-id))]
+  (let [db (mg/get-db conn (str "task_" task-id))]
 
     (with-collection db "rules"
        (find ref)
