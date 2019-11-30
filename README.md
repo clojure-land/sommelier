@@ -1,4 +1,4 @@
-# Sommelier
+![Sommelier](./resources/img/sommelier.png)
 
 ## About
 * Mine frequent item sets and association rules. 
